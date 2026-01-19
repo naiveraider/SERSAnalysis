@@ -8,8 +8,8 @@ import torch
 from pathlib import Path
 import pickle
 import json
-from data_loader import SpectrumDataLoader
-from model.model_factory import get_model_class, create_model
+from .data_loader import SpectrumDataLoader
+from .model.model_factory import get_model_class, create_model
 
 
 def load_model_and_classes(model_path: str, device: str = None):

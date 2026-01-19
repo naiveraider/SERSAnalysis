@@ -8,7 +8,7 @@ import os
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from train import train_model
+from src.train import train_model
 import argparse
 
 
@@ -80,7 +80,7 @@ def main():
         epochs=args.epochs,
         batch_size=args.batch_size,
         learning_rate=args.learning_rate,
-        model_save_path=f"model/task3_{args.model}",
+        model_save_path=f"models/3/{args.model}",
         validation_split=args.validation_split,
         device=args.device,
         **model_kwargs

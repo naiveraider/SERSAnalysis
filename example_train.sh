@@ -2,7 +2,7 @@
 # 训练示例脚本
 
 echo "训练CNN模型..."
-python train.py \
+python -m src.train \
     --model cnn \
     --data_dir datasets \
     --epochs 100 \
@@ -12,7 +12,7 @@ python train.py \
 
 echo ""
 echo "训练TCN模型..."
-python train.py \
+python -m src.train \
     --model tcn \
     --data_dir datasets \
     --epochs 100 \

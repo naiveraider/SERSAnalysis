@@ -9,9 +9,9 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 from pathlib import Path
-from data_loader import SpectrumDataLoader
-from model.model_factory import create_model, get_available_models, get_model_description
-from model.cnn_model import get_optimizer_and_criterion
+from .data_loader import SpectrumDataLoader
+from .model.model_factory import create_model, get_available_models, get_model_description
+from .model.cnn_model import get_optimizer_and_criterion
 import argparse
 import pickle
 import json

@@ -55,22 +55,22 @@ Folder names will be used as class labels.
 
 #### Using CNN Model (default)
 ```bash
-python train.py --model cnn --data_dir datasets --epochs 100 --batch_size 32
+python -m src.train --model cnn --data_dir datasets --epochs 100 --batch_size 32
 ```
 
 #### Using TCN Model
 ```bash
-python train.py --model tcn --data_dir datasets --epochs 100 --batch_size 32
+python -m src.train --model tcn --data_dir datasets --epochs 100 --batch_size 32
 ```
 
 #### Using CNN+Transformer Model
 ```bash
-python train.py --model cnn_transformer --data_dir datasets --epochs 100 --batch_size 32
+python -m src.train --model cnn_transformer --data_dir datasets --epochs 100 --batch_size 32
 ```
 
 #### TCN Model Specific Parameters
 ```bash
-python train.py --model tcn \
+python -m src.train --model tcn \
     --tcn_num_channels 64 128 256 \
     --tcn_kernel_size 3 \
     --tcn_dropout 0.2 \
@@ -79,7 +79,7 @@ python train.py --model tcn \
 
 #### CNN+Transformer Model Specific Parameters
 ```bash
-python train.py --model cnn_transformer \
+python -m src.train --model cnn_transformer \
     --cnn_transformer_cnn_channels 64 128 256 \
     --cnn_transformer_d_model 256 \
     --cnn_transformer_nhead 8 \
@@ -113,7 +113,7 @@ python train.py --model cnn_transformer \
 ### 2. Using Models for Prediction
 
 ```bash
-python predict.py --model_path model/saved_model --file_path datasets/1/Glutamic Acid/Glu 4-17 T001.csv
+python -m src.predict --model_path model/saved_model --file_path datasets/1/Glutamic Acid/Glu 4-17 T001.csv
 ```
 
 Parameters:
@@ -167,24 +167,39 @@ The CNN+Transformer model combines CNN's local feature extraction capability wit
 
 ```
 SERSAnalysis/
-├── data_loader.py          # Data loader
-├── train.py                # Training script
-├── predict.py              # Prediction script
+├── src/                    # Source code directory
+│   ├── __init__.py
+│   ├── data_loader.py      # Data loader
+│   ├── train.py            # Training script
+│   ├── predict.py          # Prediction script
+│   └── model/              # Model definitions
+│       ├── __init__.py
+│       ├── cnn_model.py       # CNN model definition
+│       ├── tcn_model.py        # TCN model definition
+│       ├── cnn_transformer_model.py  # CNN+Transformer model definition
+│       └── model_factory.py    # Model factory (unified management of all models)
+├── script/                 # Training scripts for different tasks
+│   ├── train_task1.py
+│   ├── train_task2.py
+│   ├── train_task3.py
+│   └── train_task4.py
+├── datasets/               # Dataset directory
+├── models/                 # Saved models directory (generated after training)
+│   ├── 1/                  # Task 1 models
+│   │   └── {model_name}/   # e.g., cnn/, tcn/, cnn_transformer/
+│   │       └── {folder_name}/  # For Task 1, each folder has its own model
+│   ├── 2/                  # Task 2 models
+│   ├── 3/                  # Task 3 models
+│   └── 4/                  # Task 4 models
+│       └── {model_name}/   # Each model directory contains:
+│           ├── best_model.pth      # Best model
+│           ├── final_model.pth     # Final model
+│           ├── model_config.json   # Model configuration
+│           ├── class_names.pkl     # Class names
+│           └── scaler.pkl          # Standardizer
 ├── requirements.txt        # Dependencies
 ├── README.md              # Documentation
-├── datasets/               # Dataset directory
-└── model/
-    ├── __init__.py
-    ├── cnn_model.py       # CNN model definition
-    ├── tcn_model.py       # TCN model definition
-    ├── cnn_transformer_model.py  # CNN+Transformer model definition
-    ├── model_factory.py   # Model factory (unified management of all models)
-    └── saved_model/       # Saved models (generated after training)
-        ├── best_model.pth      # Best model
-        ├── final_model.pth     # Final model
-        ├── model_config.json   # Model configuration (includes model type and parameters)
-        ├── class_names.pkl     # Class names
-        └── scaler.pkl          # Standardizer
+└── example_train.sh       # Example training script
 ```
 
 ## Model Selection Recommendations
