@@ -37,6 +37,7 @@ class PositionalEncoding(nn.Module):
 class TransformerEncoderLayer(nn.Module):
     """
     Transformer encoder layer with self-attention
+    Compatible with PyTorch 2.x by accepting is_causal parameter
     """
     def __init__(self, d_model: int, nhead: int, dim_feedforward: int = 2048, 
                  dropout: float = 0.1):
@@ -53,7 +54,16 @@ class TransformerEncoderLayer(nn.Module):
         self.dropout1 = nn.Dropout(dropout)
         self.dropout2 = nn.Dropout(dropout)
     
-    def forward(self, src, src_mask=None, src_key_padding_mask=None):
+    def forward(self, src, src_mask=None, src_key_padding_mask=None, is_causal=None):
+        """
+        Forward pass
+        
+        Args:
+            src: Input tensor (seq_len, batch_size, d_model)
+            src_mask: Attention mask
+            src_key_padding_mask: Key padding mask
+            is_causal: Causal mask flag (for PyTorch 2.x compatibility, ignored)
+        """
         # Self-attention
         src2 = self.self_attn(src, src, src, attn_mask=src_mask,
                              key_padding_mask=src_key_padding_mask)[0]
@@ -118,11 +128,13 @@ class SpectrumCNNTransformer(nn.Module):
         self.pos_encoder = PositionalEncoding(d_model, max_len=input_length, dropout=dropout)
         
         # Transformer encoder layers
-        encoder_layer = TransformerEncoderLayer(
+        # Use PyTorch's built-in TransformerEncoderLayer for better compatibility
+        encoder_layer = nn.TransformerEncoderLayer(
             d_model=d_model,
             nhead=nhead,
             dim_feedforward=dim_feedforward,
-            dropout=dropout
+            dropout=dropout,
+            batch_first=False  # Our input is (seq_len, batch_size, d_model)
         )
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
         
