@@ -8,6 +8,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
+from pathlib import Path
 from data_loader import SpectrumDataLoader
 from model.model_factory import create_model, get_available_models, get_model_description
 from model.cnn_model import get_optimizer_and_criterion
@@ -96,6 +97,7 @@ def train_model(
     model_save_path: str = "model/saved_model",
     validation_split: float = 0.2,
     device: str = None,
+    folder_path: Path = None,
     **model_kwargs
 ):
     """
@@ -111,6 +113,7 @@ def train_model(
         model_save_path: Model save path
         validation_split: Validation set ratio
         device: Device ('cpu' or 'cuda')
+        folder_path: Path to a specific folder (if provided, train model only on this folder's data)
         **model_kwargs: Model-specific parameters (e.g., num_channels, kernel_size for TCN)
     """
     # Set device
@@ -124,15 +127,43 @@ def train_model(
     
     # Load data
     loader = SpectrumDataLoader(data_dir=data_dir, task_id=task_id)
-    X_train, X_test, y_train, y_test, class_names = loader.prepare_data(
-        test_size=validation_split
-    )
+    
+    # If folder_path is provided, load data from that specific folder
+    if folder_path is not None:
+        folder_path = Path(folder_path)
+        X_train, X_test, y_train, y_test, class_names = loader.prepare_data_from_folder(
+            folder_path=folder_path,
+            test_size=validation_split
+        )
+    else:
+        X_train, X_test, y_train, y_test, class_names = loader.prepare_data(
+            test_size=validation_split
+        )
     
     print(f"Training set shape: {X_train.shape}")
     print(f"Test set shape: {X_test.shape}")
     print(f"Number of classes: {len(class_names)}")
     print(f"Class names: {class_names}")
+    
+    # Check if we have enough data
+    if len(X_train) == 0:
+        raise ValueError("No training data available")
+    
+    if len(X_test) == 0:
+        print("Warning: No test data available. Using training data for validation.")
+        X_test = X_train
+        y_test = y_train
+    
     print(f"Input length: {X_train.shape[2]}")
+    
+    # Handle single class case - for classification, we need at least 2 classes
+    # If only one class, we'll use 2 classes (the single class + a dummy class)
+    num_classes = len(class_names)
+    if num_classes == 1:
+        print("Warning: Only one class found. This is not suitable for classification.")
+        print("Consider using an autoencoder or ensuring multiple classes exist.")
+        # For now, we'll still proceed but the model will have 1 output class
+        # The training might not work well, but we'll try
     
     # Create dataset and data loader
     train_dataset = SpectrumDataset(X_train, y_train)
@@ -151,7 +182,7 @@ def train_model(
     model = create_model(
         model_name=model_name,
         input_length=input_length,
-        num_classes=len(class_names),
+        num_classes=num_classes,
         device=device,
         **model_kwargs
     )

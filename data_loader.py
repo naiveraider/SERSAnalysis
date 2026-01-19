@@ -39,29 +39,45 @@ class SpectrumDataLoader:
         spectrum_data = []
         in_spectrum_section = False
         
-        with open(file_path, 'r', encoding='utf-8') as f:
-            for line in f:
-                line = line.strip()
-                
-                # Detect [SPECTRUM] marker
-                if line == '[SPECTRUM]':
-                    in_spectrum_section = True
+        # Try multiple encodings to handle different file formats
+        encodings = ['utf-8', 'latin-1', 'cp1252', 'iso-8859-1']
+        file_content = None
+        
+        for encoding in encodings:
+            try:
+                with open(file_path, 'r', encoding=encoding) as f:
+                    file_content = f.readlines()
+                break
+            except UnicodeDecodeError:
+                continue
+        
+        # If all encodings failed, try with error handling
+        if file_content is None:
+            with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
+                file_content = f.readlines()
+        
+        for line in file_content:
+            line = line.strip()
+            
+            # Detect [SPECTRUM] marker
+            if line == '[SPECTRUM]':
+                in_spectrum_section = True
+                continue
+            
+            # Detect [ANALYSIS RESULT] marker, stop reading
+            if line == '[ANALYSIS RESULT]':
+                break
+            
+            # If in spectrum section, parse data
+            if in_spectrum_section and line:
+                try:
+                    parts = line.split(';')
+                    if len(parts) == 2:
+                        wavelength = float(parts[0])
+                        intensity = float(parts[1])
+                        spectrum_data.append([wavelength, intensity])
+                except ValueError:
                     continue
-                
-                # Detect [ANALYSIS RESULT] marker, stop reading
-                if line == '[ANALYSIS RESULT]':
-                    break
-                
-                # If in spectrum section, parse data
-                if in_spectrum_section and line:
-                    try:
-                        parts = line.split(';')
-                        if len(parts) == 2:
-                            wavelength = float(parts[0])
-                            intensity = float(parts[1])
-                            spectrum_data.append([wavelength, intensity])
-                    except ValueError:
-                        continue
         
         return np.array(spectrum_data)
     
@@ -183,3 +199,97 @@ class SpectrumDataLoader:
         """Get number of classes"""
         _, y, _ = self.load_all_data()
         return len(np.unique(y))
+    
+    def load_data_from_folder(self, folder_path: Path) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Load all CSV files from a single folder
+        
+        Args:
+            folder_path: Path to the folder containing CSV files
+            
+        Returns:
+            X: Spectrum intensity data (n_samples, n_features)
+            y: Labels (n_samples,) - all samples from same folder have same label (folder name)
+        """
+        X_list = []
+        folder_name = folder_path.name
+        
+        if not folder_path.exists() or not folder_path.is_dir():
+            raise ValueError(f"Folder not found: {folder_path}")
+        
+        # Load all CSV files from the folder
+        csv_files = list(folder_path.glob('*.csv'))
+        if len(csv_files) == 0:
+            raise ValueError(f"No CSV files found in folder: {folder_path}")
+        
+        for file_path in csv_files:
+            spectrum = self.load_spectrum_from_file(file_path)
+            if len(spectrum) > 0:
+                # Only use intensity values (second column) as features
+                intensities = spectrum[:, 1]
+                X_list.append(intensities)
+        
+        if len(X_list) == 0:
+            raise ValueError(f"No valid spectrum data found in folder: {folder_path}")
+        
+        # Convert to numpy array
+        # Find maximum length and pad shorter sequences
+        max_len = max(len(x) for x in X_list)
+        X_padded = []
+        for x in X_list:
+            if len(x) < max_len:
+                # Zero padding
+                x_padded = np.pad(x, (0, max_len - len(x)), mode='constant')
+            else:
+                x_padded = x
+            X_padded.append(x_padded)
+        
+        X = np.array(X_padded)
+        # All samples from same folder - use folder name as label
+        y = np.array([folder_name] * len(X))
+        
+        return X, y
+    
+    def prepare_data_from_folder(self, folder_path: Path, test_size: float = 0.2, random_state: int = 42) -> Tuple:
+        """
+        Prepare training and test data from a single folder
+        
+        Args:
+            folder_path: Path to the folder containing CSV files
+            test_size: Test set ratio
+            random_state: Random seed
+            
+        Returns:
+            X_train, X_test, y_train, y_test, class_name
+        """
+        X, y = self.load_data_from_folder(folder_path)
+        
+        # Since all samples are from the same folder, we have a single class
+        # But we still need to encode for consistency
+        y_encoded = np.zeros(len(y))  # All samples belong to class 0 (single class)
+        class_name = folder_path.name
+        
+        # Standardize features
+        X_scaled = self.scaler.fit_transform(X)
+        
+        # Split train and test sets
+        # For single class, we can't use stratify, but we still split
+        if len(X) > 1:
+            X_train, X_test, y_train, y_test = train_test_split(
+                X_scaled, y_encoded, 
+                test_size=test_size, 
+                random_state=random_state
+            )
+        else:
+            # If only one sample, use it for training
+            X_train, X_test = X_scaled, X_scaled[:0]
+            y_train, y_test = y_encoded, y_encoded[:0]
+        
+        # Reshape data to CNN input format (samples, channels, length)
+        # PyTorch expects (samples, channels, length), so (samples, 1, length)
+        if len(X_train) > 0:
+            X_train = X_train.reshape(X_train.shape[0], 1, X_train.shape[1])
+        if len(X_test) > 0:
+            X_test = X_test.reshape(X_test.shape[0], 1, X_test.shape[1])
+        
+        return X_train, X_test, y_train, y_test, [class_name]
