@@ -77,11 +77,11 @@ python script/train_task1.py --model cnn_transformer \
 
 Models are saved to the `models/` directory, organized by task ID:
 - Task 1: `models/1/{model_name}/{folder_name}/` (e.g., `models/1/cnn/Glutamic Acid/`)
-- Task 2: `models/2/{model_name}/` (e.g., `models/2/cnn/`)
-- Task 3: `models/3/{model_name}/` (e.g., `models/3/cnn/`)
-- Task 4: `models/4/{model_name}/` (e.g., `models/4/cnn/`)
+- Task 2: `models/2/{model_name}/{folder_name}/` (e.g., `models/2/cnn/Ratiometric with PRO & VAL/`)
+- Task 3: `models/3/{model_name}/{folder_name}/` (e.g., `models/3/cnn/AA1/`)
+- Task 4: `models/4/{model_name}/{folder_name}/` (e.g., `models/4/cnn/COG-N-519/`)
 
-**Note:** Task 1 trains one model per folder, so each folder gets its own subdirectory.
+**Note:** All tasks train one model per folder, so each folder gets its own subdirectory.
 
 Each model directory contains:
 - `best_model.pth` - Best model during training
