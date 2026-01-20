@@ -73,43 +73,19 @@ def main():
     print("Training Task 4")
     print("=" * 60)
     
-    # Get all folders in datasets/4/
-    from pathlib import Path
-    data_dir = Path("datasets") / "4"
-    
-    if not data_dir.exists():
-        raise ValueError(f"Task 4 directory not found: {data_dir}")
-    
-    # Get all subdirectories (each folder is a separate model)
-    folders = [f for f in data_dir.iterdir() if f.is_dir()]
-    
-    if len(folders) == 0:
-        raise ValueError(f"No folders found in {data_dir}")
-    
-    print(f"Found {len(folders)} folders. Training one model per folder.")
-    print(f"Folders: {[f.name for f in folders]}")
-    print("=" * 60)
-    
-    # Train one model for each folder
-    for folder in folders:
-        folder_name = folder.name
-        print(f"\n{'=' * 60}")
-        print(f"Training model for folder: {folder_name}")
-        print(f"{'=' * 60}")
-        
-        train_model(
-            data_dir=str(folder),  # Pass folder path directly
-            task_id=None,  # Don't use task_id filtering when loading from folder
-            model_name=args.model,
-            epochs=args.epochs,
-            batch_size=args.batch_size,
-            learning_rate=args.learning_rate,
-            model_save_path=f"models/4/{args.model}/{folder_name}",
-            validation_split=args.validation_split,
-            device=args.device,
-            folder_path=folder,  # Pass folder path for single-folder loading
-            **model_kwargs
-        )
+    # Train a single multi-class model on all folders under datasets/4/
+    train_model(
+        data_dir="datasets",
+        task_id=4,
+        model_name=args.model,
+        epochs=args.epochs,
+        batch_size=args.batch_size,
+        learning_rate=args.learning_rate,
+        model_save_path=f"models/4/{args.model}",
+        validation_split=args.validation_split,
+        device=args.device,
+        **model_kwargs
+    )
 
 
 if __name__ == "__main__":
