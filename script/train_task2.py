@@ -4,12 +4,49 @@ Trains models on data from datasets/2/
 """
 import sys
 import os
+import datetime
+from pathlib import Path
 
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.train import train_model
 import argparse
+
+
+class Tee:
+    """Write to multiple streams (e.g., console + log file)."""
+    def __init__(self, *streams):
+        self.streams = streams
+
+    def write(self, data):
+        for s in self.streams:
+            s.write(data)
+            s.flush()
+
+    def flush(self):
+        for s in self.streams:
+            s.flush()
+
+
+def setup_logging(task_id: int, model_name: str):
+    """
+    Redirect stdout/stderr so that console output is also saved to results/.
+    """
+    base_dir = Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    results_dir = base_dir / "results"
+    results_dir.mkdir(exist_ok=True)
+
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_path = results_dir / f"task{task_id}_{model_name}_{timestamp}.log"
+
+    log_file = open(log_path, "w", encoding="utf-8")
+
+    sys.stdout = Tee(sys.__stdout__, log_file)
+    sys.stderr = Tee(sys.__stderr__, log_file)
+
+    print(f"[LOG] Writing training logs to: {log_path}")
+    return log_file
 
 
 def main():
@@ -50,6 +87,9 @@ def main():
                         help='CNN+Transformer dropout rate (CNN+Transformer model only)')
     
     args = parser.parse_args()
+
+    # Set up logging so all console output is also written to results/
+    setup_logging(task_id=2, model_name=args.model)
     
     # Prepare model-specific parameters
     model_kwargs = {}
