@@ -13,17 +13,17 @@ class PatchEmbedding(nn.Module):
     Patch embedding for 1D sequences
     Divides sequence into patches and projects them
     """
-    def __init__(self, input_length: int, patch_size: int, d_model: int):
+    def __init__(self, max_length: int, patch_size: int, d_model: int):
         super(PatchEmbedding, self).__init__()
         self.patch_size = patch_size
-        self.num_patches = input_length // patch_size
+        self.max_num_patches = max_length // patch_size + 1  # +1 for padding cases
         
         # Linear projection for patches
         self.projection = nn.Linear(patch_size, d_model)
         
-        # Learnable position embeddings
+        # Learnable position embeddings (use max_num_patches to handle variable lengths)
         self.position_embedding = nn.Parameter(
-            torch.randn(1, self.num_patches + 1, d_model) * 0.02
+            torch.randn(1, self.max_num_patches + 1, d_model) * 0.02
         )
         
         # CLS token
@@ -38,10 +38,20 @@ class PatchEmbedding(nn.Module):
             Embedded patches (batch_size, num_patches + 1, d_model)
         """
         batch_size = x.size(0)
+        seq_len = x.size(2)
+        
+        # Pad sequence to be divisible by patch_size
+        remainder = seq_len % self.patch_size
+        if remainder != 0:
+            pad_length = self.patch_size - remainder
+            x = F.pad(x, (0, pad_length), mode='constant', value=0)
+            seq_len = x.size(2)
+        
+        num_patches = seq_len // self.patch_size
         
         # Reshape to patches: (batch_size, 1, seq_len) -> (batch_size, num_patches, patch_size)
         x = x.squeeze(1)  # (batch_size, seq_len)
-        x = x.view(batch_size, self.num_patches, self.patch_size)
+        x = x.view(batch_size, num_patches, self.patch_size)
         
         # Project patches: (batch_size, num_patches, patch_size) -> (batch_size, num_patches, d_model)
         x = self.projection(x)
@@ -50,8 +60,8 @@ class PatchEmbedding(nn.Module):
         cls_tokens = self.cls_token.expand(batch_size, -1, -1)
         x = torch.cat([cls_tokens, x], dim=1)  # (batch_size, num_patches + 1, d_model)
         
-        # Add position embeddings
-        x = x + self.position_embedding
+        # Add position embeddings (only use the needed positions)
+        x = x + self.position_embedding[:, :num_patches + 1, :]
         
         return x
 
@@ -167,12 +177,15 @@ class SpectrumViT(nn.Module):
         """
         super(SpectrumViT, self).__init__()
         
-        # Ensure input_length is divisible by patch_size
-        if input_length % patch_size != 0:
-            raise ValueError(f"input_length ({input_length}) must be divisible by patch_size ({patch_size})")
+        # Store original input_length for reference
+        self.input_length = input_length
+        self.patch_size = patch_size
         
-        # Patch embedding
-        self.patch_embedding = PatchEmbedding(input_length, patch_size, d_model)
+        # Calculate padded length (round up to nearest multiple of patch_size)
+        self.padded_length = ((input_length + patch_size - 1) // patch_size) * patch_size
+        
+        # Patch embedding (use padded_length to ensure enough position embeddings)
+        self.patch_embedding = PatchEmbedding(self.padded_length, patch_size, d_model)
         
         # Transformer blocks
         self.transformer_blocks = nn.ModuleList([
