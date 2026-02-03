@@ -1,6 +1,6 @@
 #!/bin/bash
 # Training script for Task 4
-# Trains CNN, TCN, and CNN+Transformer models on data from datasets/4/
+# Trains all models (CNN, TCN, CNN+Transformer, Mamba/S4, ViT, Static Hybrid) on data from datasets/4/
 
 set -e  # Exit on error
 
@@ -59,6 +59,54 @@ python script/train_task4.py \
     --cnn_transformer_num_layers 2 \
     --cnn_transformer_dim_feedforward 512 \
     --cnn_transformer_dropout 0.1
+
+echo ""
+echo "=========================================="
+echo "Training Mamba/S4 Model for Task 4"
+echo "=========================================="
+python script/train_task4.py \
+    --model mamba \
+    --epochs $EPOCHS \
+    --batch_size $BATCH_SIZE \
+    --learning_rate $LEARNING_RATE \
+    --validation_split $VALIDATION_SPLIT \
+    --mamba_d_model 256 \
+    --mamba_n_layers 4 \
+    --mamba_d_state 64 \
+    --mamba_dropout 0.1
+
+echo ""
+echo "=========================================="
+echo "Training ViT Model for Task 4"
+echo "=========================================="
+python script/train_task4.py \
+    --model vit \
+    --epochs $EPOCHS \
+    --batch_size $BATCH_SIZE \
+    --learning_rate $LEARNING_RATE \
+    --validation_split $VALIDATION_SPLIT \
+    --vit_patch_size 16 \
+    --vit_d_model 256 \
+    --vit_nhead 8 \
+    --vit_num_layers 6 \
+    --vit_dim_feedforward 1024 \
+    --vit_dropout 0.1
+
+echo ""
+echo "=========================================="
+echo "Training Static Hybrid Model for Task 4"
+echo "=========================================="
+python script/train_task4.py \
+    --model static_hybrid \
+    --epochs $EPOCHS \
+    --batch_size $BATCH_SIZE \
+    --learning_rate $LEARNING_RATE \
+    --validation_split $VALIDATION_SPLIT \
+    --static_hybrid_cnn_channels 64 128 256 \
+    --static_hybrid_rnn_hidden 256 \
+    --static_hybrid_rnn_layers 2 \
+    --static_hybrid_rnn_type LSTM \
+    --static_hybrid_dropout 0.2
 
 echo ""
 echo "=========================================="
