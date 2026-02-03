@@ -6,6 +6,9 @@ from typing import Dict, Callable, Any
 from .cnn_model import create_cnn_model, SpectrumCNN
 from .tcn_model import create_tcn_model, SpectrumTCN
 from .cnn_transformer_model import create_cnn_transformer_model, SpectrumCNNTransformer
+from .mamba_s4_model import create_mamba_s4_model, SpectrumMambaS4
+from .vit_model import create_vit_model, SpectrumViT
+from .static_hybrid_model import create_static_hybrid_model, SpectrumStaticHybrid
 
 
 # Model registry
@@ -24,6 +27,26 @@ MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
         'create_fn': create_cnn_transformer_model,
         'model_class': SpectrumCNNTransformer,
         'description': 'CNN + Transformer hybrid model'
+    },
+    'mamba': {
+        'create_fn': create_mamba_s4_model,
+        'model_class': SpectrumMambaS4,
+        'description': 'Mamba / S4 (State Space Model) for efficient long-range sequence modeling'
+    },
+    's4': {
+        'create_fn': create_mamba_s4_model,
+        'model_class': SpectrumMambaS4,
+        'description': 'Mamba / S4 (State Space Model) for efficient long-range sequence modeling'
+    },
+    'vit': {
+        'create_fn': create_vit_model,
+        'model_class': SpectrumViT,
+        'description': 'Vision Transformer (ViT) adapted for 1D spectrum data'
+    },
+    'static_hybrid': {
+        'create_fn': create_static_hybrid_model,
+        'model_class': SpectrumStaticHybrid,
+        'description': 'Static Hybrid model combining CNN, RNN, and statistical features'
     }
 }
 

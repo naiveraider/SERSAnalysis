@@ -51,8 +51,9 @@ def setup_logging(task_id: int, model_name: str):
 
 def main():
     parser = argparse.ArgumentParser(description='Train models for Task 3')
-    parser.add_argument('--model', type=str, default='cnn', choices=['cnn', 'tcn', 'cnn_transformer'],
-                        help='Model type (cnn, tcn, or cnn_transformer)')
+    parser.add_argument('--model', type=str, default='cnn', 
+                        choices=['cnn', 'tcn', 'cnn_transformer', 'mamba', 's4', 'vit', 'static_hybrid'],
+                        help='Model type (cnn, tcn, cnn_transformer, mamba, s4, vit, static_hybrid)')
     parser.add_argument('--epochs', type=int, default=100,
                         help='Number of training epochs')
     parser.add_argument('--batch_size', type=int, default=32,
@@ -86,6 +87,42 @@ def main():
     parser.add_argument('--cnn_transformer_dropout', type=float, default=0.1,
                         help='CNN+Transformer dropout rate (CNN+Transformer model only)')
     
+    # Mamba/S4-specific parameters
+    parser.add_argument('--mamba_d_model', type=int, default=256,
+                        help='Mamba/S4 model dimension (Mamba/S4 model only)')
+    parser.add_argument('--mamba_n_layers', type=int, default=4,
+                        help='Mamba/S4 number of layers (Mamba/S4 model only)')
+    parser.add_argument('--mamba_d_state', type=int, default=64,
+                        help='Mamba/S4 state dimension (Mamba/S4 model only)')
+    parser.add_argument('--mamba_dropout', type=float, default=0.1,
+                        help='Mamba/S4 dropout rate (Mamba/S4 model only)')
+    
+    # ViT-specific parameters
+    parser.add_argument('--vit_patch_size', type=int, default=16,
+                        help='ViT patch size (ViT model only)')
+    parser.add_argument('--vit_d_model', type=int, default=256,
+                        help='ViT model dimension (ViT model only)')
+    parser.add_argument('--vit_nhead', type=int, default=8,
+                        help='ViT number of attention heads (ViT model only)')
+    parser.add_argument('--vit_num_layers', type=int, default=6,
+                        help='ViT number of transformer layers (ViT model only)')
+    parser.add_argument('--vit_dim_feedforward', type=int, default=1024,
+                        help='ViT feedforward dimension (ViT model only)')
+    parser.add_argument('--vit_dropout', type=float, default=0.1,
+                        help='ViT dropout rate (ViT model only)')
+    
+    # Static Hybrid-specific parameters
+    parser.add_argument('--static_hybrid_cnn_channels', type=int, nargs='+', default=[64, 128, 256],
+                        help='Static Hybrid CNN channel list (Static Hybrid model only)')
+    parser.add_argument('--static_hybrid_rnn_hidden', type=int, default=256,
+                        help='Static Hybrid RNN hidden dimension (Static Hybrid model only)')
+    parser.add_argument('--static_hybrid_rnn_layers', type=int, default=2,
+                        help='Static Hybrid RNN layers (Static Hybrid model only)')
+    parser.add_argument('--static_hybrid_rnn_type', type=str, default='LSTM', choices=['LSTM', 'GRU'],
+                        help='Static Hybrid RNN type (LSTM or GRU)')
+    parser.add_argument('--static_hybrid_dropout', type=float, default=0.2,
+                        help='Static Hybrid dropout rate (Static Hybrid model only)')
+    
     args = parser.parse_args()
 
     # Set up logging so all console output is also written to results/
@@ -107,6 +144,30 @@ def main():
             'num_layers': args.cnn_transformer_num_layers,
             'dim_feedforward': args.cnn_transformer_dim_feedforward,
             'dropout': args.cnn_transformer_dropout,
+        }
+    elif args.model in ['mamba', 's4']:
+        model_kwargs = {
+            'd_model': args.mamba_d_model,
+            'n_layers': args.mamba_n_layers,
+            'd_state': args.mamba_d_state,
+            'dropout': args.mamba_dropout,
+        }
+    elif args.model == 'vit':
+        model_kwargs = {
+            'patch_size': args.vit_patch_size,
+            'd_model': args.vit_d_model,
+            'nhead': args.vit_nhead,
+            'num_layers': args.vit_num_layers,
+            'dim_feedforward': args.vit_dim_feedforward,
+            'dropout': args.vit_dropout,
+        }
+    elif args.model == 'static_hybrid':
+        model_kwargs = {
+            'cnn_channels': args.static_hybrid_cnn_channels,
+            'rnn_hidden': args.static_hybrid_rnn_hidden,
+            'rnn_layers': args.static_hybrid_rnn_layers,
+            'rnn_type': args.static_hybrid_rnn_type,
+            'dropout': args.static_hybrid_dropout,
         }
     
     print("=" * 60)
