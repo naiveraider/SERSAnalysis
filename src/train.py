@@ -206,7 +206,7 @@ def train_model(
     
     # Learning rate scheduler
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, mode='min', factor=0.5, patience=5, min_lr=1e-7, verbose=True
+        optimizer, mode='min', factor=0.5, patience=5, min_lr=1e-7
     )
     
     # Train model
