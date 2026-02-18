@@ -275,6 +275,8 @@ def train_model(
     final_val_loss, final_val_acc = validate(model, test_loader, criterion, device)
     print(f"Test loss: {final_val_loss:.4f}")
     print(f"Test accuracy: {final_val_acc:.2f}%")
+    # Parseable line for scripts (e.g. average over multiple runs)
+    print(f"FINAL_TEST_ACC={final_val_acc}")
     
     # Save final model
     final_model_path = os.path.join(model_save_path, 'final_model.pth')
