@@ -54,14 +54,16 @@ def main():
     parser.add_argument('--model', type=str, default='cnn', 
                         choices=['cnn', 'tcn', 'cnn_transformer', 'mamba', 's4', 'vit', 'static_hybrid'],
                         help='Model type (cnn, tcn, cnn_transformer, mamba, s4, vit, static_hybrid)')
-    parser.add_argument('--epochs', type=int, default=100,
-                        help='Number of training epochs')
+    parser.add_argument('--epochs', type=int, default=200,
+                        help='Number of training epochs (Task 4: more epochs, early stopping prevents overfitting)')
     parser.add_argument('--batch_size', type=int, default=32,
                         help='Batch size')
-    parser.add_argument('--learning_rate', type=float, default=0.001,
-                        help='Learning rate')
-    parser.add_argument('--validation_split', type=float, default=0.2,
-                        help='Validation set ratio')
+    parser.add_argument('--learning_rate', type=float, default=0.0005,
+                        help='Learning rate (Task 4: smaller LR to reduce overfitting)')
+    parser.add_argument('--validation_split', type=float, default=0.25,
+                        help='Validation set ratio (Task 4: larger val set for reliable early stopping)')
+    parser.add_argument('--early_stopping_patience', type=int, default=20,
+                        help='Stop if val acc does not improve for this many epochs (Task 4: 20)')
     parser.add_argument('--device', type=str, default=None,
                         help='Device (cpu/cuda, default: auto-select)')
     
@@ -184,6 +186,7 @@ def main():
         learning_rate=args.learning_rate,
         model_save_path=f"models/4/{args.model}",
         validation_split=args.validation_split,
+        early_stopping_patience=args.early_stopping_patience,
         device=args.device,
         **model_kwargs
     )

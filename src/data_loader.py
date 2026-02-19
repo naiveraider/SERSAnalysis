@@ -108,25 +108,12 @@ class SpectrumDataLoader:
                 if file.endswith('.csv'):
                     file_path = Path(root) / file
                     
-                    # Extract class label from file path
-                    # For datasets/1/Glutamic Acid/file.csv -> Glutamic Acid
-                    # For datasets/2/Ratiometric with PRO & VAL/P0 V10/file.csv -> P0 V10
-                    # Find the immediate subfolder of the task folder
+                    # Extract class label from file path (use leaf folder = direct parent of CSV)
+                    # datasets/1/Glutamic Acid/file.csv -> "Glutamic Acid"
+                    # datasets/2/Ratiometric with PRO & VAL/P0 V10/file.csv -> "P0 V10"
                     parts = file_path.parts
-                    
-                    # Find task folder index
-                    task_idx = None
-                    for i, part in enumerate(parts):
-                        if part == str(self.task_id) if self.task_id else part in ['1', '2', '3', '4']:
-                            task_idx = i
-                            break
-                    
-                    if task_idx is not None and len(parts) > task_idx + 1:
-                        # Get the first subfolder after task folder as class label
-                        label = parts[task_idx + 1]
-                    elif len(parts) >= 2:
-                        # Fallback: use parent folder name
-                        label = parts[-2]
+                    if len(parts) >= 2:
+                        label = parts[-2]  # parent folder of the file = class
                     else:
                         label = "Unknown"
                     

@@ -96,13 +96,17 @@ def train_model(
     learning_rate: float = 0.001,
     model_save_path: str = "model/saved_model",
     validation_split: float = 0.2,
+    early_stopping_patience: int = 15,
     device: str = None,
     folder_path: Path = None,
     **model_kwargs
 ):
     """
     Train model
-    
+
+    Early stopping: training stops when validation accuracy does not improve for
+    early_stopping_patience epochs; the best model (by val accuracy) is restored.
+
     Args:
         data_dir: Dataset directory
         task_id: Task ID (1-4), if specified, only load data from datasets/{task_id}/
@@ -111,7 +115,8 @@ def train_model(
         batch_size: Batch size
         learning_rate: Learning rate
         model_save_path: Model save path
-        validation_split: Validation set ratio
+        validation_split: Validation set ratio (larger = more data for early-stopping decision)
+        early_stopping_patience: Stop if val acc does not improve for this many epochs
         device: Device ('cpu' or 'cuda')
         folder_path: Path to a specific folder (if provided, train model only on this folder's data)
         **model_kwargs: Model-specific parameters (e.g., num_channels, kernel_size for TCN)
@@ -200,7 +205,7 @@ def train_model(
     val_accs = []
     
     best_val_acc = 0.0
-    patience = 15
+    patience = early_stopping_patience
     patience_counter = 0
     best_model_state = None
     
@@ -337,6 +342,8 @@ def main():
                         help='Model save path')
     parser.add_argument('--validation_split', type=float, default=0.2,
                         help='Validation set ratio')
+    parser.add_argument('--early_stopping_patience', type=int, default=15,
+                        help='Stop if val acc does not improve for this many epochs')
     parser.add_argument('--device', type=str, default=None,
                         help='Device (cpu/cuda, default: auto-select)')
     
@@ -391,6 +398,7 @@ def main():
         learning_rate=args.learning_rate,
         model_save_path=args.model_save_path,
         validation_split=args.validation_split,
+        early_stopping_patience=args.early_stopping_patience,
         device=args.device,
         **model_kwargs
     )

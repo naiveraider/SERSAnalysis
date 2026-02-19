@@ -13,11 +13,11 @@ echo "Training Task 4 - All Models"
 echo "=========================================="
 echo ""
 
-# Default parameters
-EPOCHS=${EPOCHS:-100}
+# Default parameters (Task 4: more epochs, smaller LR, larger val split to reduce overfitting)
+EPOCHS=${EPOCHS:-200}
 BATCH_SIZE=${BATCH_SIZE:-32}
-LEARNING_RATE=${LEARNING_RATE:-0.001}
-VALIDATION_SPLIT=${VALIDATION_SPLIT:-0.2}
+LEARNING_RATE=${LEARNING_RATE:-0.0005}
+VALIDATION_SPLIT=${VALIDATION_SPLIT:-0.25}
 N_RUNS=${N_RUNS:-10}
 
 mkdir -p results
