@@ -11,6 +11,7 @@ from pathlib import Path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.train import train_model
+from src.model.model_factory import get_available_models
 import argparse
 
 
@@ -54,8 +55,8 @@ def setup_logging(task_id: int, model_name: str):
 def main():
     parser = argparse.ArgumentParser(description='Train models for Task 1')
     parser.add_argument('--model', type=str, default='cnn', 
-                        choices=['cnn', 'tcn', 'cnn_transformer', 'mamba', 's4', 'vit', 'static_hybrid'],
-                        help='Model type (cnn, tcn, cnn_transformer, mamba, s4, vit, static_hybrid)')
+                        choices=get_available_models(),
+                        help=f'Model type: {", ".join(get_available_models())}')
     parser.add_argument('--epochs', type=int, default=100,
                         help='Number of training epochs')
     parser.add_argument('--batch_size', type=int, default=32,
@@ -124,7 +125,31 @@ def main():
                         help='Static Hybrid RNN type (LSTM or GRU)')
     parser.add_argument('--static_hybrid_dropout', type=float, default=0.2,
                         help='Static Hybrid dropout rate (Static Hybrid model only)')
-    
+
+    # LSTM/GRU parameters
+    parser.add_argument('--lstm_hidden_size', type=int, default=128,
+                        help='LSTM/GRU hidden size')
+    parser.add_argument('--lstm_num_layers', type=int, default=2,
+                        help='LSTM/GRU num layers')
+    parser.add_argument('--lstm_dropout', type=float, default=0.2,
+                        help='LSTM/GRU dropout')
+
+    # InceptionTime parameters
+    parser.add_argument('--inceptiontime_n_filters', type=int, default=32,
+                        help='InceptionTime n_filters')
+    parser.add_argument('--inceptiontime_depth', type=int, default=6,
+                        help='InceptionTime depth')
+    parser.add_argument('--inceptiontime_dropout', type=float, default=0.2,
+                        help='InceptionTime dropout')
+
+    # MiniROCKET parameters
+    parser.add_argument('--minirocket_num_kernels', type=int, default=1000,
+                        help='MiniROCKET num_kernels')
+    parser.add_argument('--minirocket_seed', type=int, default=42,
+                        help='MiniROCKET random seed')
+    parser.add_argument('--minirocket_dropout', type=float, default=0.2,
+                        help='MiniROCKET dropout')
+
     args = parser.parse_args()
 
     # Set up logging so all console output is also written to results/
@@ -171,7 +196,31 @@ def main():
             'rnn_type': args.static_hybrid_rnn_type,
             'dropout': args.static_hybrid_dropout,
         }
-    
+    elif args.model == 'lstm':
+        model_kwargs = {
+            'hidden_size': args.lstm_hidden_size,
+            'num_layers': args.lstm_num_layers,
+            'dropout': args.lstm_dropout,
+        }
+    elif args.model == 'gru':
+        model_kwargs = {
+            'hidden_size': args.lstm_hidden_size,
+            'num_layers': args.lstm_num_layers,
+            'dropout': args.lstm_dropout,
+        }
+    elif args.model == 'inceptiontime':
+        model_kwargs = {
+            'n_filters': args.inceptiontime_n_filters,
+            'depth': args.inceptiontime_depth,
+            'dropout': args.inceptiontime_dropout,
+        }
+    elif args.model == 'minirocket':
+        model_kwargs = {
+            'num_kernels': args.minirocket_num_kernels,
+            'seed': args.minirocket_seed,
+            'dropout': args.minirocket_dropout,
+        }
+
     print("=" * 60)
     print("Training Task 1")
     print("=" * 60)

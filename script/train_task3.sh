@@ -166,6 +166,38 @@ run_n_times_and_average "$RESULTS_FILE" "Static Hybrid" python script/train_task
 
 echo ""
 echo "=========================================="
+echo "Training LSTM Model for Task 3 ($N_RUNS runs, result averaged)"
+echo "=========================================="
+run_n_times_and_average "$RESULTS_FILE" "LSTM" python script/train_task3.py \
+    --model lstm --epochs $EPOCHS --batch_size $BATCH_SIZE --learning_rate $LEARNING_RATE \
+    --validation_split $VALIDATION_SPLIT --lstm_hidden_size 128 --lstm_num_layers 2 --lstm_dropout 0.2
+
+echo ""
+echo "=========================================="
+echo "Training GRU Model for Task 3 ($N_RUNS runs, result averaged)"
+echo "=========================================="
+run_n_times_and_average "$RESULTS_FILE" "GRU" python script/train_task3.py \
+    --model gru --epochs $EPOCHS --batch_size $BATCH_SIZE --learning_rate $LEARNING_RATE \
+    --validation_split $VALIDATION_SPLIT --lstm_hidden_size 128 --lstm_num_layers 2 --lstm_dropout 0.2
+
+echo ""
+echo "=========================================="
+echo "Training InceptionTime Model for Task 3 ($N_RUNS runs, result averaged)"
+echo "=========================================="
+run_n_times_and_average "$RESULTS_FILE" "InceptionTime" python script/train_task3.py \
+    --model inceptiontime --epochs $EPOCHS --batch_size $BATCH_SIZE --learning_rate $LEARNING_RATE \
+    --validation_split $VALIDATION_SPLIT --inceptiontime_n_filters 32 --inceptiontime_depth 6 --inceptiontime_dropout 0.2
+
+echo ""
+echo "=========================================="
+echo "Training MiniROCKET Model for Task 3 ($N_RUNS runs, result averaged)"
+echo "=========================================="
+run_n_times_and_average "$RESULTS_FILE" "MiniROCKET" python script/train_task3.py \
+    --model minirocket --epochs $EPOCHS --batch_size $BATCH_SIZE --learning_rate $LEARNING_RATE \
+    --validation_split $VALIDATION_SPLIT --minirocket_num_kernels 1000 --minirocket_seed 42 --minirocket_dropout 0.2
+
+echo ""
+echo "=========================================="
 echo "Task 3 Training Complete!"
 echo "=========================================="
 

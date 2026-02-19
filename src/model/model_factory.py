@@ -9,6 +9,9 @@ from .cnn_transformer_model import create_cnn_transformer_model, SpectrumCNNTran
 from .mamba_s4_model import create_mamba_s4_model, SpectrumMambaS4
 from .vit_model import create_vit_model, SpectrumViT
 from .static_hybrid_model import create_static_hybrid_model, SpectrumStaticHybrid
+from .lstm_gru_model import create_lstm_model, SpectrumLSTM, create_gru_model, SpectrumGRU
+from .inceptiontime_model import create_inceptiontime_model, SpectrumInceptionTime
+from .minirocket_model import create_minirocket_model, SpectrumMiniRocket
 
 
 # Model registry
@@ -47,6 +50,26 @@ MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
         'create_fn': create_static_hybrid_model,
         'model_class': SpectrumStaticHybrid,
         'description': 'Static Hybrid model combining CNN, RNN, and statistical features'
+    },
+    'lstm': {
+        'create_fn': create_lstm_model,
+        'model_class': SpectrumLSTM,
+        'description': 'LSTM for sequence classification'
+    },
+    'gru': {
+        'create_fn': create_gru_model,
+        'model_class': SpectrumGRU,
+        'description': 'GRU for sequence classification'
+    },
+    'inceptiontime': {
+        'create_fn': create_inceptiontime_model,
+        'model_class': SpectrumInceptionTime,
+        'description': 'InceptionTime: multi-scale 1D convolutions for time series'
+    },
+    'minirocket': {
+        'create_fn': create_minirocket_model,
+        'model_class': SpectrumMiniRocket,
+        'description': 'MiniROCKET: random convolutional features + linear head'
     }
 }
 
