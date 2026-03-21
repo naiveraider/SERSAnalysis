@@ -369,11 +369,11 @@ def main():
     parser.add_argument('--cnn_transformer_dropout', type=float, default=0.1,
                         help='CNN+Transformer dropout rate (CNN+Transformer model only)')
     parser.add_argument('--lstm_hidden_size', type=int, default=128,
-                        help='LSTM/GRU/LSTM+Attention/LSTM+CNN/CNN+LSTM hidden size')
+                        help='LSTM-family/GRU hidden size')
     parser.add_argument('--lstm_num_layers', type=int, default=2,
-                        help='LSTM/GRU/LSTM+Attention/LSTM+CNN/CNN+LSTM num layers')
+                        help='LSTM-family/GRU num layers')
     parser.add_argument('--lstm_dropout', type=float, default=0.2,
-                        help='LSTM/GRU/LSTM+Attention/LSTM+CNN/CNN+LSTM dropout')
+                        help='LSTM-family/GRU dropout')
     
     args = parser.parse_args()
     
@@ -394,7 +394,7 @@ def main():
             'dim_feedforward': args.cnn_transformer_dim_feedforward,
             'dropout': args.cnn_transformer_dropout,
         }
-    elif args.model in ['lstm', 'lstm_attention', 'lstm_cnn', 'cnn_lstm', 'gru']:
+    elif args.model in ['lstm', 'stacked_lstm', 'bilstm', 'lstm_attention', 'lstm_cnn', 'cnn_lstm', 'gru']:
         model_kwargs = {
             'hidden_size': args.lstm_hidden_size,
             'num_layers': args.lstm_num_layers,

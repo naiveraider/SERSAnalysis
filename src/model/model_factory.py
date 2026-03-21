@@ -12,6 +12,8 @@ from .static_hybrid_model import create_static_hybrid_model, SpectrumStaticHybri
 from .lstm_gru_model import (
     create_lstm_model,
     SpectrumLSTM,
+    create_stacked_lstm_model,
+    create_bilstm_model,
     create_lstm_attention_model,
     SpectrumLSTMAttention,
     create_lstm_cnn_model,
@@ -66,6 +68,16 @@ MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
         'create_fn': create_lstm_model,
         'model_class': SpectrumLSTM,
         'description': 'LSTM for sequence classification'
+    },
+    'stacked_lstm': {
+        'create_fn': create_stacked_lstm_model,
+        'model_class': SpectrumLSTM,
+        'description': 'Stacked LSTM for sequence classification'
+    },
+    'bilstm': {
+        'create_fn': create_bilstm_model,
+        'model_class': SpectrumLSTM,
+        'description': 'Bidirectional LSTM for sequence classification'
     },
     'lstm_attention': {
         'create_fn': create_lstm_attention_model,

@@ -295,3 +295,27 @@ def create_cnn_lstm_model(input_length: int, num_classes: int, device: str = 'cp
         bidirectional=bidirectional, dropout=dropout
     )
     return model.to(device)
+
+
+def create_stacked_lstm_model(input_length: int, num_classes: int, device: str = 'cpu',
+                              hidden_size: int = 128, num_layers: int = 2,
+                              bidirectional: bool = False, dropout: float = 0.2,
+                              **kwargs) -> SpectrumLSTM:
+    model = SpectrumLSTM(
+        input_length=input_length, num_classes=num_classes,
+        hidden_size=hidden_size, num_layers=max(2, num_layers),
+        bidirectional=False, dropout=dropout
+    )
+    return model.to(device)
+
+
+def create_bilstm_model(input_length: int, num_classes: int, device: str = 'cpu',
+                        hidden_size: int = 128, num_layers: int = 2,
+                        bidirectional: bool = True, dropout: float = 0.2,
+                        **kwargs) -> SpectrumLSTM:
+    model = SpectrumLSTM(
+        input_length=input_length, num_classes=num_classes,
+        hidden_size=hidden_size, num_layers=num_layers,
+        bidirectional=True, dropout=dropout
+    )
+    return model.to(device)
