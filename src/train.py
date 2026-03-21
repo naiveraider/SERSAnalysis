@@ -368,6 +368,12 @@ def main():
                         help='CNN+Transformer feedforward dimension (CNN+Transformer model only)')
     parser.add_argument('--cnn_transformer_dropout', type=float, default=0.1,
                         help='CNN+Transformer dropout rate (CNN+Transformer model only)')
+    parser.add_argument('--lstm_hidden_size', type=int, default=128,
+                        help='LSTM/GRU hidden size')
+    parser.add_argument('--lstm_num_layers', type=int, default=2,
+                        help='LSTM/GRU num layers')
+    parser.add_argument('--lstm_dropout', type=float, default=0.2,
+                        help='LSTM/GRU dropout')
     
     args = parser.parse_args()
     
@@ -387,6 +393,12 @@ def main():
             'num_layers': args.cnn_transformer_num_layers,
             'dim_feedforward': args.cnn_transformer_dim_feedforward,
             'dropout': args.cnn_transformer_dropout,
+        }
+    elif args.model in ['lstm', 'lstm_attention', 'gru']:
+        model_kwargs = {
+            'hidden_size': args.lstm_hidden_size,
+            'num_layers': args.lstm_num_layers,
+            'dropout': args.lstm_dropout,
         }
     
     train_model(

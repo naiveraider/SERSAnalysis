@@ -9,7 +9,14 @@ from .cnn_transformer_model import create_cnn_transformer_model, SpectrumCNNTran
 from .mamba_s4_model import create_mamba_s4_model, SpectrumMambaS4
 from .vit_model import create_vit_model, SpectrumViT
 from .static_hybrid_model import create_static_hybrid_model, SpectrumStaticHybrid
-from .lstm_gru_model import create_lstm_model, SpectrumLSTM, create_gru_model, SpectrumGRU
+from .lstm_gru_model import (
+    create_lstm_model,
+    SpectrumLSTM,
+    create_lstm_attention_model,
+    SpectrumLSTMAttention,
+    create_gru_model,
+    SpectrumGRU,
+)
 from .inceptiontime_model import create_inceptiontime_model, SpectrumInceptionTime
 from .minirocket_model import create_minirocket_model, SpectrumMiniRocket
 
@@ -55,6 +62,11 @@ MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
         'create_fn': create_lstm_model,
         'model_class': SpectrumLSTM,
         'description': 'LSTM for sequence classification'
+    },
+    'lstm_attention': {
+        'create_fn': create_lstm_attention_model,
+        'model_class': SpectrumLSTMAttention,
+        'description': 'LSTM with temporal attention pooling for sequence classification'
     },
     'gru': {
         'create_fn': create_gru_model,
