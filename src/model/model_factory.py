@@ -14,6 +14,8 @@ from .lstm_gru_model import (
     SpectrumLSTM,
     create_lstm_attention_model,
     SpectrumLSTMAttention,
+    create_lstm_cnn_model,
+    SpectrumLSTMCNN,
     create_gru_model,
     SpectrumGRU,
 )
@@ -67,6 +69,11 @@ MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
         'create_fn': create_lstm_attention_model,
         'model_class': SpectrumLSTMAttention,
         'description': 'LSTM with temporal attention pooling for sequence classification'
+    },
+    'lstm_cnn': {
+        'create_fn': create_lstm_cnn_model,
+        'model_class': SpectrumLSTMCNN,
+        'description': 'LSTM followed by temporal CNN blocks for sequence classification'
     },
     'gru': {
         'create_fn': create_gru_model,

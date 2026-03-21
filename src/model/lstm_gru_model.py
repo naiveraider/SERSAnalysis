@@ -95,6 +95,57 @@ class SpectrumLSTMAttention(nn.Module):
         return self.fc(context)
 
 
+class SpectrumLSTMCNN(nn.Module):
+    """LSTM followed by temporal CNN blocks for 1D spectrum classification."""
+
+    def __init__(self, input_length: int, num_classes: int,
+                 hidden_size: int = 128,
+                 num_layers: int = 2,
+                 bidirectional: bool = True,
+                 dropout: float = 0.2):
+        super().__init__()
+        self.hidden_size = hidden_size
+        self.num_layers = num_layers
+        self.bidirectional = bidirectional
+        self.num_directions = 2 if bidirectional else 1
+
+        self.lstm = nn.LSTM(
+            input_size=1,
+            hidden_size=hidden_size,
+            num_layers=num_layers,
+            batch_first=True,
+            dropout=dropout if num_layers > 1 else 0,
+            bidirectional=bidirectional
+        )
+
+        lstm_output_size = hidden_size * self.num_directions
+        self.temporal_cnn = nn.Sequential(
+            nn.Conv1d(lstm_output_size, 128, kernel_size=3, padding=1),
+            nn.BatchNorm1d(128),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Conv1d(128, 256, kernel_size=3, padding=1),
+            nn.BatchNorm1d(256),
+            nn.ReLU(),
+            nn.AdaptiveAvgPool1d(1)
+        )
+        self.fc = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(256, 256),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(256, num_classes)
+        )
+
+    def forward(self, x):
+        # x: (batch, 1, seq_len) -> (batch, seq_len, 1)
+        x = x.transpose(1, 2)
+        out, _ = self.lstm(x)
+        out = out.transpose(1, 2)  # (batch, hidden*num_directions, seq_len)
+        features = self.temporal_cnn(out)
+        return self.fc(features)
+
+
 class SpectrumGRU(nn.Module):
     """GRU model for 1D spectrum sequence classification"""
 
@@ -162,6 +213,18 @@ def create_lstm_attention_model(input_length: int, num_classes: int, device: str
                                 bidirectional: bool = True, dropout: float = 0.2,
                                 **kwargs) -> SpectrumLSTMAttention:
     model = SpectrumLSTMAttention(
+        input_length=input_length, num_classes=num_classes,
+        hidden_size=hidden_size, num_layers=num_layers,
+        bidirectional=bidirectional, dropout=dropout
+    )
+    return model.to(device)
+
+
+def create_lstm_cnn_model(input_length: int, num_classes: int, device: str = 'cpu',
+                          hidden_size: int = 128, num_layers: int = 2,
+                          bidirectional: bool = True, dropout: float = 0.2,
+                          **kwargs) -> SpectrumLSTMCNN:
+    model = SpectrumLSTMCNN(
         input_length=input_length, num_classes=num_classes,
         hidden_size=hidden_size, num_layers=num_layers,
         bidirectional=bidirectional, dropout=dropout

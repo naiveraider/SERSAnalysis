@@ -124,7 +124,7 @@ def main():
     parser.add_argument('--static_hybrid_dropout', type=float, default=0.2,
                         help='Static Hybrid dropout rate (Static Hybrid model only)')
 
-    # LSTM/GRU/InceptionTime/MiniROCKET parameters
+    # LSTM-family / GRU / InceptionTime / MiniROCKET parameters
     parser.add_argument('--lstm_hidden_size', type=int, default=128)
     parser.add_argument('--lstm_num_layers', type=int, default=2)
     parser.add_argument('--lstm_dropout', type=float, default=0.2)
@@ -181,7 +181,7 @@ def main():
             'rnn_type': args.static_hybrid_rnn_type,
             'dropout': args.static_hybrid_dropout,
         }
-    elif args.model in ['lstm', 'lstm_attention']:
+    elif args.model in ['lstm', 'lstm_attention', 'lstm_cnn']:
         model_kwargs = {'hidden_size': args.lstm_hidden_size, 'num_layers': args.lstm_num_layers, 'dropout': args.lstm_dropout}
     elif args.model == 'gru':
         model_kwargs = {'hidden_size': args.lstm_hidden_size, 'num_layers': args.lstm_num_layers, 'dropout': args.lstm_dropout}

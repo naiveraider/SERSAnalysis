@@ -180,7 +180,7 @@ def main():
             'rnn_type': args.static_hybrid_rnn_type,
             'dropout': args.static_hybrid_dropout,
         }
-    elif args.model in ['lstm', 'lstm_attention']:
+    elif args.model in ['lstm', 'lstm_attention', 'lstm_cnn']:
         model_kwargs = {'hidden_size': args.lstm_hidden_size, 'num_layers': args.lstm_num_layers, 'dropout': args.lstm_dropout}
     elif args.model == 'gru':
         model_kwargs = {'hidden_size': args.lstm_hidden_size, 'num_layers': args.lstm_num_layers, 'dropout': args.lstm_dropout}
