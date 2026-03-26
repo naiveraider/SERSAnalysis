@@ -394,7 +394,7 @@ def main():
             'dim_feedforward': args.cnn_transformer_dim_feedforward,
             'dropout': args.cnn_transformer_dropout,
         }
-    elif args.model in ['lstm', 'stacked_lstm', 'bilstm', 'lstm_attention', 'lstm_cnn', 'cnn_lstm', 'cnn_bilstm_attention', 'gru']:
+    elif args.model in ['lstm', 'stacked_lstm', 'bilstm', 'lstm_attention', 'lstm_cnn', 'cnn_lstm', 'cnn_bilstm_attention', 'gru', 'bigru', 'bigru_meanmax', 'layernorm_bigru']:
         model_kwargs = {
             'hidden_size': args.lstm_hidden_size,
             'num_layers': args.lstm_num_layers,

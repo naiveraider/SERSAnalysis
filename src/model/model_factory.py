@@ -24,6 +24,11 @@ from .lstm_gru_model import (
     SpectrumCNNBiLSTMAttention,
     create_gru_model,
     SpectrumGRU,
+    create_bigru_model,
+    create_bigru_meanmax_model,
+    SpectrumGRUMeanMax,
+    create_layernorm_bigru_model,
+    SpectrumLayerNormBiGRU,
 )
 from .inceptiontime_model import create_inceptiontime_model, SpectrumInceptionTime
 from .minirocket_model import create_minirocket_model, SpectrumMiniRocket
@@ -105,6 +110,21 @@ MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
         'create_fn': create_gru_model,
         'model_class': SpectrumGRU,
         'description': 'GRU for sequence classification'
+    },
+    'bigru': {
+        'create_fn': create_bigru_model,
+        'model_class': SpectrumGRU,
+        'description': 'Bidirectional GRU for sequence classification'
+    },
+    'bigru_meanmax': {
+        'create_fn': create_bigru_meanmax_model,
+        'model_class': SpectrumGRUMeanMax,
+        'description': 'BiGRU with mean and max pooling for sequence classification'
+    },
+    'layernorm_bigru': {
+        'create_fn': create_layernorm_bigru_model,
+        'model_class': SpectrumLayerNormBiGRU,
+        'description': 'BiGRU with LayerNorm and mean pooling for sequence classification'
     },
     'inceptiontime': {
         'create_fn': create_inceptiontime_model,

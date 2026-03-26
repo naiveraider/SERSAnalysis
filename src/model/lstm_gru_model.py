@@ -256,6 +256,84 @@ class SpectrumCNNBiLSTMAttention(nn.Module):
         return self.fc(context)
 
 
+class SpectrumGRUMeanMax(nn.Module):
+    """BiGRU with mean and max pooling over the full sequence."""
+
+    def __init__(self, input_length: int, num_classes: int,
+                 hidden_size: int = 128,
+                 num_layers: int = 2,
+                 bidirectional: bool = True,
+                 dropout: float = 0.2):
+        super().__init__()
+        self.hidden_size = hidden_size
+        self.num_layers = num_layers
+        self.bidirectional = True
+        self.num_directions = 2
+
+        self.gru = nn.GRU(
+            input_size=1,
+            hidden_size=hidden_size,
+            num_layers=num_layers,
+            batch_first=True,
+            dropout=dropout if num_layers > 1 else 0,
+            bidirectional=True
+        )
+        gru_output_size = hidden_size * self.num_directions
+        self.fc = nn.Sequential(
+            nn.Linear(gru_output_size * 2, 256),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(256, num_classes)
+        )
+
+    def forward(self, x):
+        x = x.transpose(1, 2)  # (batch, seq_len, 1)
+        out, _ = self.gru(x)
+        mean_pool = out.mean(dim=1)
+        max_pool = out.max(dim=1).values
+        features = torch.cat([mean_pool, max_pool], dim=1)
+        return self.fc(features)
+
+
+class SpectrumLayerNormBiGRU(nn.Module):
+    """BiGRU with LayerNorm on sequence outputs before final pooling."""
+
+    def __init__(self, input_length: int, num_classes: int,
+                 hidden_size: int = 128,
+                 num_layers: int = 2,
+                 bidirectional: bool = True,
+                 dropout: float = 0.2):
+        super().__init__()
+        self.hidden_size = hidden_size
+        self.num_layers = num_layers
+        self.bidirectional = True
+        self.num_directions = 2
+
+        self.gru = nn.GRU(
+            input_size=1,
+            hidden_size=hidden_size,
+            num_layers=num_layers,
+            batch_first=True,
+            dropout=dropout if num_layers > 1 else 0,
+            bidirectional=True
+        )
+        gru_output_size = hidden_size * self.num_directions
+        self.output_norm = nn.LayerNorm(gru_output_size)
+        self.fc = nn.Sequential(
+            nn.Linear(gru_output_size, 256),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(256, num_classes)
+        )
+
+    def forward(self, x):
+        x = x.transpose(1, 2)  # (batch, seq_len, 1)
+        out, _ = self.gru(x)
+        out = self.output_norm(out)
+        features = out.mean(dim=1)
+        return self.fc(features)
+
+
 class SpectrumGRU(nn.Module):
     """GRU model for 1D spectrum sequence classification"""
 
@@ -383,6 +461,42 @@ def create_cnn_bilstm_attention_model(input_length: int, num_classes: int, devic
                                       bidirectional: bool = True, dropout: float = 0.2,
                                       **kwargs) -> SpectrumCNNBiLSTMAttention:
     model = SpectrumCNNBiLSTMAttention(
+        input_length=input_length, num_classes=num_classes,
+        hidden_size=hidden_size, num_layers=num_layers,
+        bidirectional=True, dropout=dropout
+    )
+    return model.to(device)
+
+
+def create_bigru_model(input_length: int, num_classes: int, device: str = 'cpu',
+                       hidden_size: int = 128, num_layers: int = 2,
+                       bidirectional: bool = True, dropout: float = 0.2,
+                       **kwargs) -> SpectrumGRU:
+    model = SpectrumGRU(
+        input_length=input_length, num_classes=num_classes,
+        hidden_size=hidden_size, num_layers=num_layers,
+        bidirectional=True, dropout=dropout
+    )
+    return model.to(device)
+
+
+def create_bigru_meanmax_model(input_length: int, num_classes: int, device: str = 'cpu',
+                               hidden_size: int = 128, num_layers: int = 2,
+                               bidirectional: bool = True, dropout: float = 0.2,
+                               **kwargs) -> SpectrumGRUMeanMax:
+    model = SpectrumGRUMeanMax(
+        input_length=input_length, num_classes=num_classes,
+        hidden_size=hidden_size, num_layers=num_layers,
+        bidirectional=True, dropout=dropout
+    )
+    return model.to(device)
+
+
+def create_layernorm_bigru_model(input_length: int, num_classes: int, device: str = 'cpu',
+                                 hidden_size: int = 128, num_layers: int = 2,
+                                 bidirectional: bool = True, dropout: float = 0.2,
+                                 **kwargs) -> SpectrumLayerNormBiGRU:
+    model = SpectrumLayerNormBiGRU(
         input_length=input_length, num_classes=num_classes,
         hidden_size=hidden_size, num_layers=num_layers,
         bidirectional=True, dropout=dropout
