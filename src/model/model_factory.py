@@ -20,6 +20,8 @@ from .lstm_gru_model import (
     SpectrumLSTMCNN,
     create_cnn_lstm_model,
     SpectrumCNNLSTM,
+    create_cnn_bilstm_attention_model,
+    SpectrumCNNBiLSTMAttention,
     create_gru_model,
     SpectrumGRU,
 )
@@ -93,6 +95,11 @@ MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
         'create_fn': create_cnn_lstm_model,
         'model_class': SpectrumCNNLSTM,
         'description': 'CNN preprocessing followed by LSTM for sequence classification'
+    },
+    'cnn_bilstm_attention': {
+        'create_fn': create_cnn_bilstm_attention_model,
+        'model_class': SpectrumCNNBiLSTMAttention,
+        'description': 'CNN preprocessing with BiLSTM and temporal attention pooling'
     },
     'gru': {
         'create_fn': create_gru_model,
