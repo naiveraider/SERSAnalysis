@@ -15,6 +15,14 @@ from .model.cnn_model import get_optimizer_and_criterion
 import argparse
 import pickle
 import json
+from sklearn.metrics import (
+    accuracy_score,
+    f1_score,
+    jaccard_score,
+    average_precision_score,
+    roc_auc_score,
+)
+from sklearn.preprocessing import label_binarize
 
 
 class SpectrumDataset(Dataset):
@@ -85,6 +93,65 @@ def validate(model, val_loader, criterion, device):
     epoch_loss = running_loss / len(val_loader)
     epoch_acc = 100 * correct / total
     return epoch_loss, epoch_acc
+
+
+def evaluate_classification_metrics(model, data_loader, criterion, device, num_classes):
+    """Compute loss plus classification metrics on a dataloader."""
+    model.eval()
+    running_loss = 0.0
+    all_probs = []
+    all_preds = []
+    all_targets = []
+
+    with torch.no_grad():
+        for X_batch, y_batch in data_loader:
+            X_batch = X_batch.to(device)
+            y_batch = y_batch.to(device)
+
+            outputs = model(X_batch)
+            loss = criterion(outputs, y_batch)
+            probs = torch.softmax(outputs, dim=1)
+            preds = torch.argmax(probs, dim=1)
+
+            running_loss += loss.item()
+            all_probs.append(probs.cpu().numpy())
+            all_preds.append(preds.cpu().numpy())
+            all_targets.append(y_batch.cpu().numpy())
+
+    avg_loss = running_loss / len(data_loader)
+    y_true = np.concatenate(all_targets)
+    y_pred = np.concatenate(all_preds)
+    y_prob = np.concatenate(all_probs)
+
+    metrics = {
+        'loss': float(avg_loss),
+        'accuracy': float(accuracy_score(y_true, y_pred) * 100.0),
+        'f1': float(f1_score(y_true, y_pred, average='macro', zero_division=0)),
+        'jaccard': float(jaccard_score(y_true, y_pred, average='macro', zero_division=0)),
+        'auprc': float('nan'),
+        'auroc': float('nan'),
+    }
+
+    # AUPRC/AUROC require probability targets in one-vs-rest form for multi-class.
+    try:
+        if num_classes == 2:
+            metrics['auprc'] = float(average_precision_score(y_true, y_prob[:, 1]))
+            metrics['auroc'] = float(roc_auc_score(y_true, y_prob[:, 1]))
+        elif num_classes > 2:
+            y_true_bin = label_binarize(y_true, classes=np.arange(num_classes))
+            metrics['auprc'] = float(
+                average_precision_score(y_true_bin, y_prob, average='macro')
+            )
+            metrics['auroc'] = float(
+                roc_auc_score(
+                    y_true_bin, y_prob, multi_class='ovr', average='macro'
+                )
+            )
+    except ValueError:
+        # Keep NaN if a class is missing in this split.
+        pass
+
+    return metrics
 
 
 def train_model(
@@ -203,6 +270,10 @@ def train_model(
     train_accs = []
     val_losses = []
     val_accs = []
+    val_f1s = []
+    val_jaccards = []
+    val_auprcs = []
+    val_aurocs = []
     
     best_val_acc = 0.0
     patience = early_stopping_patience
@@ -226,7 +297,15 @@ def train_model(
         train_loss, train_acc = train_epoch(model, train_loader, criterion, optimizer, device)
         
         # Validate
-        val_loss, val_acc = validate(model, test_loader, criterion, device)
+        val_metrics = evaluate_classification_metrics(
+            model=model,
+            data_loader=test_loader,
+            criterion=criterion,
+            device=device,
+            num_classes=num_classes,
+        )
+        val_loss = val_metrics['loss']
+        val_acc = val_metrics['accuracy']
         
         # Update learning rate
         scheduler.step(val_loss)
@@ -236,11 +315,19 @@ def train_model(
         train_accs.append(train_acc)
         val_losses.append(val_loss)
         val_accs.append(val_acc)
+        val_f1s.append(val_metrics['f1'])
+        val_jaccards.append(val_metrics['jaccard'])
+        val_auprcs.append(val_metrics['auprc'])
+        val_aurocs.append(val_metrics['auroc'])
         
         # Print progress
         print(f'Epoch [{epoch+1}/{epochs}] - '
               f'Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.2f}% - '
-              f'Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.2f}%')
+              f'Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.2f}%, '
+              f'Val F1: {val_metrics["f1"]:.4f}, '
+              f'Val Jaccard: {val_metrics["jaccard"]:.4f}, '
+              f'Val AUPRC: {val_metrics["auprc"]:.4f}, '
+              f'Val AUROC: {val_metrics["auroc"]:.4f}')
         
         # Save best model
         if val_acc > best_val_acc:
@@ -277,11 +364,27 @@ def train_model(
     print("Evaluating model...")
     print("=" * 50)
     
-    final_val_loss, final_val_acc = validate(model, test_loader, criterion, device)
+    final_metrics = evaluate_classification_metrics(
+        model=model,
+        data_loader=test_loader,
+        criterion=criterion,
+        device=device,
+        num_classes=num_classes,
+    )
+    final_val_loss = final_metrics['loss']
+    final_val_acc = final_metrics['accuracy']
     print(f"Test loss: {final_val_loss:.4f}")
     print(f"Test accuracy: {final_val_acc:.2f}%")
+    print(f"Test F1 (macro): {final_metrics['f1']:.4f}")
+    print(f"Test Jaccard (macro): {final_metrics['jaccard']:.4f}")
+    print(f"Test AUPRC (macro/ovr): {final_metrics['auprc']:.4f}")
+    print(f"Test AUROC (macro/ovr): {final_metrics['auroc']:.4f}")
     # Parseable line for scripts (e.g. average over multiple runs)
     print(f"FINAL_TEST_ACC={final_val_acc}")
+    print(f"FINAL_TEST_F1={final_metrics['f1']}")
+    print(f"FINAL_TEST_JACCARD={final_metrics['jaccard']}")
+    print(f"FINAL_TEST_AUPRC={final_metrics['auprc']}")
+    print(f"FINAL_TEST_AUROC={final_metrics['auroc']}")
     
     # Save final model
     final_model_path = os.path.join(model_save_path, 'final_model.pth')
@@ -320,7 +423,10 @@ def train_model(
     print(f"Scaler saved to: {scaler_path}")
     
     return model, {'train_loss': train_losses, 'train_acc': train_accs,
-                   'val_loss': val_losses, 'val_acc': val_accs}, class_names
+                   'val_loss': val_losses, 'val_acc': val_accs,
+                   'val_f1': val_f1s, 'val_jaccard': val_jaccards,
+                   'val_auprc': val_auprcs, 'val_auroc': val_aurocs,
+                   'final_metrics': final_metrics}, class_names
 
 
 def main():
