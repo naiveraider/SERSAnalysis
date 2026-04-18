@@ -14,7 +14,6 @@ from pathlib import Path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.train import train_model
-from src.data_loader import load_task_data
 
 
 def run_n_times_and_average(results_file, label, n_runs, model_name, train_args):
