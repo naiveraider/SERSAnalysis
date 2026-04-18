@@ -1,21 +1,24 @@
 """
 Train ablation MeanMax models for Task 1 and average results.
-Follows the same pattern as train_task1_selected_models.sh
+Directly imports and trains ablation models.
 """
 import sys
 import os
-import subprocess
 import re
-import tempfile
 import datetime
+import io
+import contextlib
 from pathlib import Path
 
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from src.train import train_model
+from src.data_loader import load_task_data
 
-def run_n_times_and_average(results_file, label, n_runs, cmd_args):
-    """Run a command n times, extract FINAL_TEST_ACC, and compute average."""
+
+def run_n_times_and_average(results_file, label, n_runs, model_name, train_args):
+    """Train a model n times, extract FINAL_TEST_ACC, and compute average."""
     sum_acc = 0
     count = 0
     accs = []
@@ -23,26 +26,18 @@ def run_n_times_and_average(results_file, label, n_runs, cmd_args):
     for i in range(1, n_runs + 1):
         print(f"---------- {label} Run {i}/{n_runs} ----------")
         
-        # Create a temporary file to capture output
-        with tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix='.log') as tmp:
-            tmp_path = tmp.name
-        
         try:
-            # Run the training command and capture output
-            result = subprocess.run(
-                cmd_args,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                encoding='utf-8',
-                errors='ignore'
-            )
+            # Capture stdout to extract FINAL_TEST_ACC
+            f = io.StringIO()
+            with contextlib.redirect_stdout(f):
+                # Train the model
+                train_model(
+                    model_name=model_name,
+                    task_id=1,
+                    **train_args
+                )
             
-            full_output = result.stdout
-            
-            # Write output to temporary file
-            with open(tmp_path, 'w') as f:
-                f.write(full_output)
+            full_output = f.getvalue()
             
             # Print output to console
             print(full_output)
@@ -59,11 +54,13 @@ def run_n_times_and_average(results_file, label, n_runs, cmd_args):
                 count += 1
                 accs.append(acc)
                 print(f"Extracted accuracy: {acc}%")
+            else:
+                print(f"WARNING: Could not extract FINAL_TEST_ACC from run {i}")
         
-        finally:
-            # Clean up temporary file
-            if os.path.exists(tmp_path):
-                os.remove(tmp_path)
+        except Exception as e:
+            print(f"ERROR in run {i}: {e}")
+            import traceback
+            traceback.print_exc()
     
     # Calculate and display average
     if count > 0:
@@ -84,29 +81,72 @@ def run_n_times_and_average(results_file, label, n_runs, cmd_args):
         print(f"WARNING: No successful runs for {label}")
 
 
-def build_model_args(model):
-    """Build extra arguments specific to each ablation model."""
-    args = {}
+def build_train_args(model, epochs, batch_size, learning_rate, validation_split, device):
+    """Build training arguments for a specific ablation model."""
     
-    model_mapping = {
-        'cnn_meanmax': [],
-        'tcn_meanmax': ['--tcn_num_channels', '64', '128', '256', '--tcn_kernel_size', '3', '--tcn_dropout', '0.2'],
-        'vit_meanmax': ['--vit_patch_size', '16', '--vit_d_model', '256', '--vit_nhead', '8', 
-                        '--vit_num_layers', '6', '--vit_dim_feedforward', '1024', '--vit_dropout', '0.1'],
-        'inceptiontime_meanmax': ['--inceptiontime_n_filters', '32', '--inceptiontime_depth', '6', '--inceptiontime_dropout', '0.2'],
-        'lstm_meanmax': ['--lstm_hidden_size', '128', '--lstm_num_layers', '2', '--lstm_dropout', '0.2'],
-        'cnn_lstm_meanmax': ['--lstm_hidden_size', '128', '--lstm_num_layers', '2', '--lstm_dropout', '0.2'],
-        'cnn_transformer_meanmax': ['--cnn_transformer_cnn_channels', '64', '128', '256', '--cnn_transformer_d_model', '256',
-                                    '--cnn_transformer_nhead', '8', '--cnn_transformer_num_layers', '2',
-                                    '--cnn_transformer_dim_feedforward', '512', '--cnn_transformer_dropout', '0.1'],
-        'mamba_meanmax': ['--mamba_d_model', '256', '--mamba_n_layers', '4', '--mamba_d_state', '64', '--mamba_dropout', '0.1'],
+    train_args = {
+        'epochs': epochs,
+        'batch_size': batch_size,
+        'learning_rate': learning_rate,
+        'validation_split': validation_split,
     }
     
-    if model not in model_mapping:
-        print(f"ERROR: Unknown model '{model}'. Supported models: {list(model_mapping.keys())}")
+    if device:
+        train_args['device'] = device
+    
+    # Add model-specific hyperparameters
+    model_params = {
+        'cnn_meanmax': {},
+        'tcn_meanmax': {
+            'tcn_num_channels': [64, 128, 256],
+            'tcn_kernel_size': 3,
+            'tcn_dropout': 0.2,
+        },
+        'vit_meanmax': {
+            'vit_patch_size': 16,
+            'vit_d_model': 256,
+            'vit_nhead': 8,
+            'vit_num_layers': 6,
+            'vit_dim_feedforward': 1024,
+            'vit_dropout': 0.1,
+        },
+        'inceptiontime_meanmax': {
+            'inceptiontime_n_filters': 32,
+            'inceptiontime_depth': 6,
+            'inceptiontime_dropout': 0.2,
+        },
+        'lstm_meanmax': {
+            'lstm_hidden_size': 128,
+            'lstm_num_layers': 2,
+            'lstm_dropout': 0.2,
+        },
+        'cnn_lstm_meanmax': {
+            'lstm_hidden_size': 128,
+            'lstm_num_layers': 2,
+            'lstm_dropout': 0.2,
+        },
+        'cnn_transformer_meanmax': {
+            'cnn_transformer_cnn_channels': [64, 128, 256],
+            'cnn_transformer_d_model': 256,
+            'cnn_transformer_nhead': 8,
+            'cnn_transformer_num_layers': 2,
+            'cnn_transformer_dim_feedforward': 512,
+            'cnn_transformer_dropout': 0.1,
+        },
+        'mamba_meanmax': {
+            'mamba_d_model': 256,
+            'mamba_n_layers': 4,
+            'mamba_d_state': 64,
+            'mamba_dropout': 0.1,
+        },
+    }
+    
+    if model not in model_params:
+        print(f"ERROR: Unknown model '{model}'. Supported models: {list(model_params.keys())}")
         sys.exit(1)
     
-    return model_mapping[model]
+    train_args.update(model_params[model])
+    return train_args
 
 
 def main():
@@ -169,26 +209,11 @@ Supported models:
         print(f"Training {model} for Task 1 ({n_runs} runs, result averaged)")
         print("=" * 50)
         
-        # Build model-specific arguments
-        extra_args = build_model_args(model)
-        
-        # Build command
-        cmd = [
-            'python', 'script/train_task1.py',
-            '--model', model,
-            '--epochs', str(epochs),
-            '--batch_size', str(args.batch_size),
-            '--learning_rate', str(args.learning_rate),
-            '--validation_split', str(args.validation_split),
-        ]
-        
-        if args.device:
-            cmd.extend(['--device', args.device])
-        
-        cmd.extend(extra_args)
+        # Build training arguments
+        train_args = build_train_args(model, epochs, args.batch_size, args.learning_rate, args.validation_split, args.device)
         
         # Run n times and average
-        run_n_times_and_average(str(results_file), model, n_runs, cmd)
+        run_n_times_and_average(str(results_file), model, n_runs, model, train_args)
     
     print("")
     print(f"Results written to {results_file}")
