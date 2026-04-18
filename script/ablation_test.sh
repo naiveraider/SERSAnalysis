@@ -1,42 +1,48 @@
-#!/usr/bin/env bash
-# Class-style runner for ablation tests (GPU-capable)
-set -euo pipefail
+#!/bin/bash
+# Run specified ablation MeanMax models N times each and average FINAL_TEST_ACC.
+#
+# Usage:
+#   bash script/ablation_test.sh lstm_meanmax cnn_meanmax
+#   N_RUNS=5 EPOCHS=100 bash script/ablation_test.sh lstm_meanmax vit_meanmax
+
+set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR/.."
 
-if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
-	echo "Usage: DEVICE=cuda:0 N_RUNS=3 SEQ_LEN=128 bash script/ablation_test.sh"
-	exit 0
+if [ "$#" -eq 0 ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+  echo "Usage: bash script/ablation_test.sh <model1> [model2 ...]"
+  echo ""
+  echo "Example:"
+  echo "  bash script/ablation_test.sh lstm_meanmax cnn_meanmax"
+  echo "  N_RUNS=5 EPOCHS=100 bash script/ablation_test.sh lstm_meanmax vit_meanmax tcn_meanmax"
+  echo ""
+  echo "Supported models:"
+  echo "  cnn_meanmax, tcn_meanmax, vit_meanmax, inceptiontime_meanmax,"
+  echo "  lstm_meanmax, cnn_lstm_meanmax, cnn_transformer_meanmax, mamba_meanmax"
+  exit 0
 fi
 
-PYTHON=${PYTHON:-python3}
-SEQ_LEN=${SEQ_LEN:-512}
-DEVICE=${DEVICE:-cpu}
-N_RUNS=${N_RUNS:-1}
+EPOCHS=${EPOCHS:-100}
+BATCH_SIZE=${BATCH_SIZE:-32}
+LEARNING_RATE=${LEARNING_RATE:-0.001}
+VALIDATION_SPLIT=${VALIDATION_SPLIT:-0.2}
+N_RUNS=${N_RUNS:-10}
+DEVICE=${DEVICE:-}
 
-mkdir -p results
-TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-RESULTS_FILE="results/ablation_test_${TIMESTAMP}.txt"
+# Build device argument
+DEVICE_ARG=""
+if [ -n "$DEVICE" ]; then
+  DEVICE_ARG="--device $DEVICE"
+fi
 
-echo "Ablation MeanMax Test Runner" > "$RESULTS_FILE"
-echo "Generated: $(date)" >> "$RESULTS_FILE"
-echo "DEVICE=$DEVICE SEQ_LEN=$SEQ_LEN N_RUNS=$N_RUNS" >> "$RESULTS_FILE"
-echo "" >> "$RESULTS_FILE"
-
-run_once() {
-	local run_idx="$1"
-	local logf
-	logf=$(mktemp)
-	echo "----- Run $run_idx/$N_RUNS (device=$DEVICE seq_len=$SEQ_LEN) -----" | tee -a "$RESULTS_FILE"
-	PYTHONPATH=. "$PYTHON" script/ablation_test.py --seq-len "$SEQ_LEN" --device "$DEVICE" 2>&1 | tee "$logf" | tee -a "$RESULTS_FILE"
-	rm -f "$logf"
-}
-
-for i in $(seq 1 "$N_RUNS"); do
-	run_once "$i"
-done
-
-echo "" | tee -a "$RESULTS_FILE"
-echo "Logs written to $RESULTS_FILE"
+# Run python script with all arguments
+PYTHONPATH=. python script/ablation_test.py \
+  --epochs "$EPOCHS" \
+  --batch_size "$BATCH_SIZE" \
+  --learning_rate "$LEARNING_RATE" \
+  --validation_split "$VALIDATION_SPLIT" \
+  --n_runs "$N_RUNS" \
+  $DEVICE_ARG \
+  "$@"
 
