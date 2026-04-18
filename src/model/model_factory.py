@@ -32,6 +32,16 @@ from .lstm_gru_model import (
 )
 from .inceptiontime_model import create_inceptiontime_model, SpectrumInceptionTime
 from .minirocket_model import create_minirocket_model, SpectrumMiniRocket
+from .ablation.meanmax_models import (
+    create_cnn_meanmax_model, SpectrumCNNMeanMax,
+    create_tcn_meanmax_model, SpectrumTCNMeanMax,
+    create_vit_meanmax_model, SpectrumViTMeanMax,
+    create_inceptiontime_meanmax_model, SpectrumInceptionTimeMeanMax,
+    create_lstm_meanmax_model, SpectrumLSTMMeanMax,
+    create_cnn_lstm_meanmax_model, SpectrumCNNLSTMMeanMax,
+    create_cnn_transformer_meanmax_model, SpectrumCNNTransformerMeanMax,
+    create_mamba_meanmax_model, SpectrumMambaS4MeanMax,
+)
 
 
 # Model registry
@@ -135,7 +145,48 @@ MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
         'create_fn': create_minirocket_model,
         'model_class': SpectrumMiniRocket,
         'description': 'MiniROCKET: random convolutional features + linear head'
-    }
+    },
+    # Ablation MeanMax models
+    'cnn_meanmax': {
+        'create_fn': create_cnn_meanmax_model,
+        'model_class': SpectrumCNNMeanMax,
+        'description': 'CNN with Mean+Max pooling ablation'
+    },
+    'tcn_meanmax': {
+        'create_fn': create_tcn_meanmax_model,
+        'model_class': SpectrumTCNMeanMax,
+        'description': 'TCN with Mean+Max pooling ablation'
+    },
+    'vit_meanmax': {
+        'create_fn': create_vit_meanmax_model,
+        'model_class': SpectrumViTMeanMax,
+        'description': 'ViT with Mean+Max pooling ablation'
+    },
+    'inceptiontime_meanmax': {
+        'create_fn': create_inceptiontime_meanmax_model,
+        'model_class': SpectrumInceptionTimeMeanMax,
+        'description': 'InceptionTime with Mean+Max pooling ablation'
+    },
+    'lstm_meanmax': {
+        'create_fn': create_lstm_meanmax_model,
+        'model_class': SpectrumLSTMMeanMax,
+        'description': 'LSTM with Mean+Max pooling ablation'
+    },
+    'cnn_lstm_meanmax': {
+        'create_fn': create_cnn_lstm_meanmax_model,
+        'model_class': SpectrumCNNLSTMMeanMax,
+        'description': 'CNN+LSTM with Mean+Max pooling ablation'
+    },
+    'cnn_transformer_meanmax': {
+        'create_fn': create_cnn_transformer_meanmax_model,
+        'model_class': SpectrumCNNTransformerMeanMax,
+        'description': 'CNN+Transformer with Mean+Max pooling ablation'
+    },
+    'mamba_meanmax': {
+        'create_fn': create_mamba_meanmax_model,
+        'model_class': SpectrumMambaS4MeanMax,
+        'description': 'Mamba/S4 with Mean+Max pooling ablation'
+    },
 }
 
 
