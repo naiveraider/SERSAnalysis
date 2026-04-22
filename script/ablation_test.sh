@@ -12,6 +12,7 @@ BATCH_SIZE=32
 LEARNING_RATE=0.001
 VALIDATION_SPLIT=0.2
 N_RUNS=10
+TASK_ID=1
 DEVICE=cuda:0
 
 # All ablation models
@@ -33,6 +34,7 @@ PYTHONPATH=. python script/ablation_test.py \
   --learning_rate "$LEARNING_RATE" \
   --validation_split "$VALIDATION_SPLIT" \
   --n_runs "$N_RUNS" \
+  --task_id "$TASK_ID" \
   --device "$DEVICE" \
   "${MODELS[@]}"
 

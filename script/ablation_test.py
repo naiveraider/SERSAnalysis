@@ -16,7 +16,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.train import train_model
 
 
-def run_n_times_and_average(results_file, label, n_runs, model_name, train_args):
+def run_n_times_and_average(results_file, label, n_runs, model_name, task_id, train_args):
     """Train a model n times, extract FINAL_TEST_ACC, and compute average."""
     sum_acc = 0
     count = 0
@@ -32,7 +32,7 @@ def run_n_times_and_average(results_file, label, n_runs, model_name, train_args)
                 # Train the model
                 train_model(
                     model_name=model_name,
-                    task_id=1,
+                    task_id=task_id,
                     **train_args
                 )
             
@@ -173,6 +173,7 @@ Supported models:
     parser.add_argument('--validation_split', type=float, default=0.2, help='Validation set ratio')
     parser.add_argument('--n_runs', type=int, default=10, help='Number of runs per model')
     parser.add_argument('--device', type=str, default=None, help='Device (cpu/cuda)')
+    parser.add_argument('--task_id', type=int, default=1, help='Task ID to train (default: 1)')
     
     args = parser.parse_args()
     
@@ -184,6 +185,7 @@ Supported models:
     # Get N_RUNS from environment variable if set
     n_runs = int(os.environ.get('N_RUNS', args.n_runs))
     epochs = int(os.environ.get('EPOCHS', args.epochs))
+    task_id = int(os.environ.get('TASK_ID', args.task_id))
     
     # Setup results directory and file
     base_dir = Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -191,11 +193,11 @@ Supported models:
     results_dir.mkdir(exist_ok=True)
     
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    results_file = results_dir / f"ablation_meanmax_{timestamp}.txt"
+    results_file = results_dir / f"ablation_meanmax_task{task_id}_{timestamp}.txt"
     
     # Write header to results file
     with open(results_file, 'w') as f:
-        f.write("Task 1 - Ablation MeanMax Models Test Accuracy Summary\n")
+        f.write(f"Task {task_id} - Ablation MeanMax Models Test Accuracy Summary\n")
         f.write(f"Generated: {datetime.datetime.now()}\n")
         f.write(f"N_RUNS={n_runs}\n")
         f.write(f"Models: {' '.join(args.models)}\n")
@@ -205,14 +207,14 @@ Supported models:
     for model in args.models:
         print("")
         print("=" * 50)
-        print(f"Training {model} for Task 1 ({n_runs} runs, result averaged)")
+        print(f"Training {model} for Task {task_id} ({n_runs} runs, result averaged)")
         print("=" * 50)
         
         # Build training arguments
         train_args = build_train_args(model, epochs, args.batch_size, args.learning_rate, args.validation_split, args.device)
         
         # Run n times and average
-        run_n_times_and_average(str(results_file), model, n_runs, model, train_args)
+        run_n_times_and_average(str(results_file), model, n_runs, model, task_id, train_args)
     
     print("")
     print(f"Results written to {results_file}")
