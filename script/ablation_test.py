@@ -1,7 +1,4 @@
-"""
-Train ablation MeanMax models for Task 1 and average results.
-Directly imports and trains ablation models.
-"""
+"""Train ablation pooling models and average results."""
 import sys
 import os
 import re
@@ -14,6 +11,79 @@ from pathlib import Path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.train import train_model
+
+
+BASE_MODELS = (
+    'cnn',
+    'tcn',
+    'vit',
+    'inceptiontime',
+    'lstm',
+    'gru',
+    'cnn_lstm',
+    'cnn_transformer',
+    'mamba',
+)
+
+POOLING_METHODS = ('mean', 'max', 'meanmax')
+
+BASE_MODEL_PARAMS = {
+    'cnn': {},
+    'tcn': {
+        'num_channels': [64, 128, 256],
+        'kernel_size': 3,
+        'dropout': 0.2,
+    },
+    'vit': {
+        'patch_size': 16,
+        'd_model': 256,
+        'nhead': 8,
+        'num_layers': 6,
+        'dim_feedforward': 1024,
+        'dropout': 0.1,
+    },
+    'inceptiontime': {
+        'n_filters': 32,
+        'depth': 6,
+        'dropout': 0.2,
+    },
+    'lstm': {
+        'hidden_size': 128,
+        'num_layers': 2,
+        'dropout': 0.2,
+    },
+    'gru': {
+        'hidden_size': 128,
+        'num_layers': 2,
+        'dropout': 0.2,
+    },
+    'cnn_lstm': {
+        'hidden_size': 128,
+        'num_layers': 2,
+        'dropout': 0.2,
+    },
+    'cnn_transformer': {
+        'cnn_channels': [64, 128, 256],
+        'd_model': 256,
+        'nhead': 8,
+        'num_layers': 2,
+        'dim_feedforward': 512,
+        'dropout': 0.1,
+    },
+    'mamba': {
+        'd_model': 256,
+        'n_layers': 4,
+        'd_state': 64,
+        'dropout': 0.1,
+    },
+}
+
+
+SUPPORTED_MODELS = tuple(
+    f"{base_model}_{pooling_method}"
+    for base_model in BASE_MODELS
+    for pooling_method in POOLING_METHODS
+)
 
 
 def run_n_times_and_average(results_file, label, n_runs, model_name, task_id, train_args):
@@ -93,58 +163,16 @@ def build_train_args(model, epochs, batch_size, learning_rate, validation_split,
     if device:
         train_args['device'] = device
     
-    # Add model-specific hyperparameters (names must match constructor params)
-    model_params = {
-        'cnn_meanmax': {},
-        'tcn_meanmax': {
-            'num_channels': [64, 128, 256],
-            'kernel_size': 3,
-            'dropout': 0.2,
-        },
-        'vit_meanmax': {
-            'patch_size': 16,
-            'd_model': 256,
-            'nhead': 8,
-            'num_layers': 6,
-            'dim_feedforward': 1024,
-            'dropout': 0.1,
-        },
-        'inceptiontime_meanmax': {
-            'n_filters': 32,
-            'depth': 6,
-            'dropout': 0.2,
-        },
-        'lstm_meanmax': {
-            'hidden_size': 128,
-            'num_layers': 2,
-            'dropout': 0.2,
-        },
-        'cnn_lstm_meanmax': {
-            'hidden_size': 128,
-            'num_layers': 2,
-            'dropout': 0.2,
-        },
-        'cnn_transformer_meanmax': {
-            'cnn_channels': [64, 128, 256],
-            'd_model': 256,
-            'nhead': 8,
-            'num_layers': 2,
-            'dim_feedforward': 512,
-            'dropout': 0.1,
-        },
-        'mamba_meanmax': {
-            'd_model': 256,
-            'n_layers': 4,
-            'd_state': 64,
-            'dropout': 0.1,
-        },
-    }
-    
-    if model not in model_params:
-        print(f"ERROR: Unknown model '{model}'. Supported models: {list(model_params.keys())}")
+    matched_base_model = next(
+        (base_model for base_model in BASE_MODELS if model == f"{base_model}_mean" or model == f"{base_model}_max" or model == f"{base_model}_meanmax"),
+        None,
+    )
+
+    if matched_base_model is None:
+        print(f"ERROR: Unknown model '{model}'. Supported models: {list(SUPPORTED_MODELS)}")
         sys.exit(1)
-    
-    train_args.update(model_params[model])
+
+    train_args.update(BASE_MODEL_PARAMS[matched_base_model])
     return train_args
 
 
@@ -152,18 +180,17 @@ def main():
     import argparse
     
     parser = argparse.ArgumentParser(
-        description='Train ablation MeanMax models for Task 1 and average results',
+                description='Train ablation pooling models for Task 1 and average results',
         usage='%(prog)s [options] <model1> [model2 ...]',
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
+                epilog=f"""
 Examples:
-  python script/ablation_test.py lstm_meanmax cnn_meanmax
-  N_RUNS=10 EPOCHS=100 python script/ablation_test.py lstm_meanmax vit_meanmax tcn_meanmax
+    python script/ablation_test.py lstm_mean lstm_max lstm_meanmax
+    N_RUNS=10 EPOCHS=100 python script/ablation_test.py cnn_mean vit_max tcn_meanmax
 
 Supported models:
-  cnn_meanmax, tcn_meanmax, vit_meanmax, inceptiontime_meanmax,
-  lstm_meanmax, cnn_lstm_meanmax, cnn_transformer_meanmax, mamba_meanmax
-        """
+    {', '.join(SUPPORTED_MODELS)}
+                """
     )
     
     parser.add_argument('models', nargs='*', help='Models to train')
@@ -193,11 +220,11 @@ Supported models:
     results_dir.mkdir(exist_ok=True)
     
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    results_file = results_dir / f"ablation_meanmax_task{task_id}_{timestamp}.txt"
+    results_file = results_dir / f"ablation_pooling_task{task_id}_{timestamp}.txt"
     
     # Write header to results file
     with open(results_file, 'w') as f:
-        f.write(f"Task {task_id} - Ablation MeanMax Models Test Accuracy Summary\n")
+        f.write(f"Task {task_id} - Ablation Pooling Models Test Accuracy Summary\n")
         f.write(f"Generated: {datetime.datetime.now()}\n")
         f.write(f"N_RUNS={n_runs}\n")
         f.write(f"Models: {' '.join(args.models)}\n")

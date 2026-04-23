@@ -1,5 +1,5 @@
 #!/bin/bash
-# Run all ablation MeanMax models with fixed parameters
+# Run all ablation pooling models with fixed parameters
 # N_RUNS=10 EPOCHS=100 DEVICE=cuda:0
 
 set -e
@@ -16,16 +16,26 @@ TASK_ID=1
 DEVICE=cuda:0
 
 # All ablation models
-MODELS=(
-  "cnn_meanmax"
-  "tcn_meanmax"
-  "vit_meanmax"
-  "inceptiontime_meanmax"
-  "lstm_meanmax"
-  "cnn_lstm_meanmax"
-  "cnn_transformer_meanmax"
-  "mamba_meanmax"
+BASE_MODELS=(
+  "cnn"
+  "tcn"
+  "vit"
+  "inceptiontime"
+  "lstm"
+  "gru"
+  "cnn_lstm"
+  "cnn_transformer"
+  "mamba"
 )
+
+POOLING_METHODS=("mean" "max" "meanmax")
+
+MODELS=()
+for base_model in "${BASE_MODELS[@]}"; do
+  for pooling_method in "${POOLING_METHODS[@]}"; do
+    MODELS+=("${base_model}_${pooling_method}")
+  done
+done
 
 # Run python script with all ablation models
 PYTHONPATH=. python script/ablation_test.py \
