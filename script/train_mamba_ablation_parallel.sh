@@ -31,6 +31,10 @@ if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
   echo "                  Order: mamba,mamba_mean,mamba_max,mamba_meanmax"
   echo "  PYTHON_BIN      Python executable to use (default: .venv/bin/python)"
   echo "  DRY_RUN=1       Only print commands; do not launch any jobs"
+  echo ""
+  echo "Behavior:"
+  echo "  Jobs are dispatched in parallel in the background."
+  echo "  This launcher exits immediately after all jobs are started."
   exit 0
 fi
 
@@ -104,8 +108,6 @@ done
 declare -a JOB_LABELS=()
 declare -a JOB_PIDS=()
 declare -a JOB_LOGS=()
-declare -a JOB_RESULTS=()
-declare -a JOB_EXIT_CODES=()
 
 build_device_args() {
   local device_value="$1"
@@ -126,24 +128,22 @@ start_job() {
   local job_log="$2"
   shift 2
 
-  echo "[Start] $label"
-  echo "[Job log] $job_log"
-  print_command "$@"
-
   JOB_LABELS+=("$label")
   JOB_LOGS+=("$job_log")
 
   if [ "$DRY_RUN" = "1" ]; then
+    echo "[Start] $label"
+    echo "[Job log] $job_log"
+    print_command "$@"
     echo "[Dry run] $label was not started."
     JOB_PIDS+=("dry-run")
     return
   fi
 
   (
-    "$@" 2>&1 | tee -a "$job_log"
-  ) &
+    exec "$@" >> "$job_log" 2>&1
+  ) >/dev/null 2>&1 &
   JOB_PIDS+=("$!")
-  echo "[PID] $label -> ${JOB_PIDS[-1]}"
 }
 
 build_device_args "${JOB_DEVICES[0]}"
@@ -207,34 +207,6 @@ if [ "$DRY_RUN" = "1" ]; then
   exit 0
 fi
 
-overall_status=0
-for i in "${!JOB_PIDS[@]}"; do
-  pid="${JOB_PIDS[$i]}"
-  label="${JOB_LABELS[$i]}"
-
-  if wait "$pid"; then
-    JOB_EXIT_CODES+=("0")
-    echo "[Done] $label"
-  else
-    JOB_EXIT_CODES+=("$?")
-    echo "[Failed] $label" >&2
-    overall_status=1
-  fi
-
-  result_file=$(python - <<'PY' "${JOB_LOGS[$i]}"
-import sys
-
-result_path = ""
-with open(sys.argv[1], "r", encoding="utf-8", errors="ignore") as f:
-    for line in f:
-        if "Results written to " in line:
-            result_path = line.strip().split("Results written to ", 1)[1]
-print(result_path)
-PY
-)
-  JOB_RESULTS+=("$result_file")
-done
-
 {
   echo "Task ${TASK_ID} - Parallel Mamba Ablation Launcher"
   echo "Generated: $(date)"
@@ -245,17 +217,16 @@ done
   echo "BATCH_SIZE=$BATCH_SIZE"
   echo "LEARNING_RATE=$LEARNING_RATE"
   echo "VALIDATION_SPLIT=$VALIDATION_SPLIT"
+  echo "Mode=background-dispatch"
   echo ""
   for i in "${!JOB_LABELS[@]}"; do
     echo "Job: ${JOB_LABELS[$i]}"
-    echo "  Exit code: ${JOB_EXIT_CODES[$i]}"
+    echo "  PID: ${JOB_PIDS[$i]}"
     echo "  Job log: ${JOB_LOGS[$i]}"
-    if [ -n "${JOB_RESULTS[$i]}" ]; then
-      echo "  Results file: ${JOB_RESULTS[$i]}"
-    fi
     echo ""
   done
 } > "$SUMMARY_FILE"
 
 echo "[Summary] $SUMMARY_FILE"
-exit "$overall_status"
+echo "[Status] 4 jobs dispatched in parallel in the background."
+exit 0
