@@ -31,6 +31,18 @@ BATCH_SIZE=${BATCH_SIZE:-32}
 LEARNING_RATE=${LEARNING_RATE:-0.001}
 VALIDATION_SPLIT=${VALIDATION_SPLIT:-0.2}
 N_RUNS=${N_RUNS:-10}
+DEVICE=${DEVICE:-}
+
+COMMON_ARGS=(
+  --epochs "$EPOCHS"
+  --batch_size "$BATCH_SIZE"
+  --learning_rate "$LEARNING_RATE"
+  --validation_split "$VALIDATION_SPLIT"
+)
+
+if [ -n "$DEVICE" ]; then
+  COMMON_ARGS+=(--device "$DEVICE")
+fi
 
 LSTM_HIDDEN_SIZE=${LSTM_HIDDEN_SIZE:-128}
 LSTM_NUM_LAYERS=${LSTM_NUM_LAYERS:-2}
@@ -228,10 +240,7 @@ for model in "$@"; do
   echo "=========================================="
   run_n_times_and_average "$RESULTS_FILE" "$model" python script/train_task2.py \
     --model "$model" \
-    --epochs "$EPOCHS" \
-    --batch_size "$BATCH_SIZE" \
-    --learning_rate "$LEARNING_RATE" \
-    --validation_split "$VALIDATION_SPLIT" \
+    "${COMMON_ARGS[@]}" \
     "${MODEL_EXTRA_ARGS[@]}"
 done
 
