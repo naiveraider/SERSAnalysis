@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Train ablation pooling models and average results."""
 import sys
 import os
@@ -8,8 +9,19 @@ import contextlib
 import math
 from pathlib import Path
 
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+VENV_PYTHON = PROJECT_ROOT / '.venv' / 'bin' / 'python'
+
+if os.environ.get('SERS_ANALYSIS_SKIP_REEXEC') != '1' and VENV_PYTHON.exists():
+    current_python = Path(sys.executable).resolve() if sys.executable else None
+    target_python = VENV_PYTHON.resolve()
+    if current_python != target_python:
+        env = os.environ.copy()
+        env['SERS_ANALYSIS_SKIP_REEXEC'] = '1'
+        os.execve(str(target_python), [str(target_python), __file__, *sys.argv[1:]], env)
+
 # Add parent directory to path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.train import train_model
 
