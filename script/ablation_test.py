@@ -5,6 +5,7 @@ import re
 import datetime
 import io
 import contextlib
+import math
 from pathlib import Path
 
 # Add parent directory to path
@@ -85,12 +86,50 @@ SUPPORTED_MODELS = tuple(
     for pooling_method in POOLING_METHODS
 )
 
+FINAL_METRIC_KEYS = {
+    'accuracy_score': 'FINAL_TEST_ACC',
+    'f1_score': 'FINAL_TEST_F1',
+    'jaccard_score': 'FINAL_TEST_JACCARD',
+    'average_precision_score': 'FINAL_TEST_AUPRC',
+    'roc_auc_score': 'FINAL_TEST_AUROC',
+}
+
+
+def compute_average(values, precision):
+    """Average numeric metric values, skipping NaN entries."""
+    numeric_values = []
+    for value in values:
+        try:
+            numeric_value = float(value)
+        except (TypeError, ValueError):
+            continue
+        if math.isnan(numeric_value):
+            continue
+        numeric_values.append(numeric_value)
+
+    if not numeric_values:
+        return 'nan'
+
+    return f"{sum(numeric_values) / len(numeric_values):.{precision}f}"
+
+
+def extract_final_metrics(full_output):
+    """Extract parseable final metrics from training output."""
+    metrics = {metric_name: None for metric_name in FINAL_METRIC_KEYS}
+
+    for line in full_output.splitlines():
+        for metric_name, output_key in FINAL_METRIC_KEYS.items():
+            prefix = f'{output_key}='
+            if line.startswith(prefix):
+                metrics[metric_name] = line[len(prefix):].strip()
+
+    return metrics
+
 
 def run_n_times_and_average(results_file, label, n_runs, model_name, task_id, train_args):
-    """Train a model n times, extract FINAL_TEST_ACC, and compute average."""
-    sum_acc = 0
+    """Train a model n times, extract final metrics, and compute averages."""
     count = 0
-    accs = []
+    per_run_metrics = []
     
     for i in range(1, n_runs + 1):
         print(f"---------- {label} Run {i}/{n_runs} ----------")
@@ -111,20 +150,21 @@ def run_n_times_and_average(results_file, label, n_runs, model_name, task_id, tr
             # Print output to console
             print(full_output)
             
-            # Extract FINAL_TEST_ACC using regex
-            acc = None
-            for line in full_output.split('\n'):
-                match = re.search(r'FINAL_TEST_ACC=([0-9.]+)', line)
-                if match:
-                    acc = match.group(1)
-            
-            if acc is not None:
-                sum_acc += float(acc)
+            metrics = extract_final_metrics(full_output)
+
+            if all(value is not None for value in metrics.values()):
                 count += 1
-                accs.append(acc)
-                print(f"Extracted accuracy: {acc}%")
+                per_run_metrics.append(metrics)
+                print(
+                    "Extracted metrics: "
+                    f"accuracy_score={metrics['accuracy_score']}% "
+                    f"f1_score={metrics['f1_score']} "
+                    f"jaccard_score={metrics['jaccard_score']} "
+                    f"average_precision_score={metrics['average_precision_score']} "
+                    f"roc_auc_score={metrics['roc_auc_score']}"
+                )
             else:
-                print(f"WARNING: Could not extract FINAL_TEST_ACC from run {i}")
+                print(f"WARNING: Could not extract all final metrics from run {i}")
         
         except Exception as e:
             print(f"ERROR in run {i}: {e}")
@@ -133,18 +173,56 @@ def run_n_times_and_average(results_file, label, n_runs, model_name, task_id, tr
     
     # Calculate and display average
     if count > 0:
-        avg = sum_acc / count
+        average_metrics = {
+            'accuracy_score': compute_average(
+                [metrics['accuracy_score'] for metrics in per_run_metrics],
+                precision=2,
+            ),
+            'f1_score': compute_average(
+                [metrics['f1_score'] for metrics in per_run_metrics],
+                precision=4,
+            ),
+            'jaccard_score': compute_average(
+                [metrics['jaccard_score'] for metrics in per_run_metrics],
+                precision=4,
+            ),
+            'average_precision_score': compute_average(
+                [metrics['average_precision_score'] for metrics in per_run_metrics],
+                precision=4,
+            ),
+            'roc_auc_score': compute_average(
+                [metrics['roc_auc_score'] for metrics in per_run_metrics],
+                precision=4,
+            ),
+        }
         print("")
         print("=" * 50)
-        print(f"{label} - Average Test Accuracy ({count}/{n_runs} runs): {avg:.2f}%")
+        print(f"{label} - Average Test Metrics ({count}/{n_runs} runs):")
+        print(f"  accuracy_score: {average_metrics['accuracy_score']}%")
+        print(f"  f1_score: {average_metrics['f1_score']}")
+        print(f"  jaccard_score: {average_metrics['jaccard_score']}")
+        print(f"  average_precision_score: {average_metrics['average_precision_score']}")
+        print(f"  roc_auc_score: {average_metrics['roc_auc_score']}")
         print("=" * 50)
         
         # Write to results file
         with open(results_file, 'a') as f:
             f.write(f"Model: {label}\n")
-            for idx, acc in enumerate(accs, 1):
-                f.write(f"  Run {idx}: {acc}%\n")
-            f.write(f"  Average: {avg:.2f}%\n")
+            for idx, metrics in enumerate(per_run_metrics, 1):
+                f.write(
+                    f"  Run {idx}: accuracy_score={metrics['accuracy_score']}%, "
+                    f"f1_score={metrics['f1_score']}, "
+                    f"jaccard_score={metrics['jaccard_score']}, "
+                    f"average_precision_score={metrics['average_precision_score']}, "
+                    f"roc_auc_score={metrics['roc_auc_score']}\n"
+                )
+            f.write(
+                f"  Average: accuracy_score={average_metrics['accuracy_score']}%, "
+                f"f1_score={average_metrics['f1_score']}, "
+                f"jaccard_score={average_metrics['jaccard_score']}, "
+                f"average_precision_score={average_metrics['average_precision_score']}, "
+                f"roc_auc_score={average_metrics['roc_auc_score']}\n"
+            )
             f.write("\n")
     else:
         print(f"WARNING: No successful runs for {label}")
@@ -224,7 +302,7 @@ Supported models:
     
     # Write header to results file
     with open(results_file, 'w') as f:
-        f.write(f"Task {task_id} - Ablation Pooling Models Test Accuracy Summary\n")
+        f.write(f"Task {task_id} - Ablation Pooling Models Test Metrics Summary\n")
         f.write(f"Generated: {datetime.datetime.now()}\n")
         f.write(f"N_RUNS={n_runs}\n")
         f.write(f"Models: {' '.join(args.models)}\n")

@@ -7,6 +7,13 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR/.."
 
+mkdir -p results/log
+TIMESTAMP=${TIMESTAMP:-$(date +"%Y%m%d_%H%M%S")}
+LOG_FILE="results/log/$(basename "$0" .sh)_${TIMESTAMP}.log"
+exec > >(tee -a "$LOG_FILE") 2>&1
+
+echo "[Log will be written to $LOG_FILE]"
+
 EPOCHS=${EPOCHS:-100}
 BATCH_SIZE=${BATCH_SIZE:-32}
 LEARNING_RATE=${LEARNING_RATE:-0.001}
