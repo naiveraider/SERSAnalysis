@@ -30,7 +30,7 @@ if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
   echo "  DEVICE_LIST     Comma or space separated device list for the 4 jobs"
   echo "                  Order: mamba,mamba_mean,mamba_max,mamba_meanmax"
   echo "  PYTHON_BIN      Python executable to use (default: .venv/bin/python)"
-  echo "  DRY_RUN=1       Print commands without launching jobs"
+  echo "  DRY_RUN=1       Only print commands; do not launch any jobs"
   exit 0
 fi
 
@@ -134,6 +134,7 @@ start_job() {
   JOB_LOGS+=("$job_log")
 
   if [ "$DRY_RUN" = "1" ]; then
+    echo "[Dry run] $label was not started."
     JOB_PIDS+=("dry-run")
     return
   fi
@@ -142,6 +143,7 @@ start_job() {
     "$@" 2>&1 | tee -a "$job_log"
   ) &
   JOB_PIDS+=("$!")
+  echo "[PID] $label -> ${JOB_PIDS[-1]}"
 }
 
 build_device_args "${JOB_DEVICES[0]}"
@@ -201,7 +203,7 @@ start_job \
   mamba_meanmax
 
 if [ "$DRY_RUN" = "1" ]; then
-  echo "[Dry run] Commands printed only."
+  echo "[Dry run] Commands printed only. Remove DRY_RUN=1 to launch all 4 jobs in parallel."
   exit 0
 fi
 
