@@ -289,7 +289,7 @@ Supported models:
     parser.add_argument('--learning_rate', type=float, default=0.001, help='Learning rate')
     parser.add_argument('--validation_split', type=float, default=0.2, help='Validation set ratio')
     parser.add_argument('--n_runs', type=int, default=10, help='Number of runs per model')
-    parser.add_argument('--device', type=str, default=None, help='Device (cpu/cuda)')
+    parser.add_argument('--device', '--cuda', dest='device', type=str, default=None, help='Device (cpu/cuda/cuda:0)')
     parser.add_argument('--task_id', type=int, default=1, help='Task ID to train (default: 1)')
     
     args = parser.parse_args()

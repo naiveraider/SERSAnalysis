@@ -8,6 +8,10 @@ This directory contains training scripts for 4 different tasks, each correspondi
 - `train_task2.py` - Train models on data from `datasets/2/`
 - `train_task3.py` - Train models on data from `datasets/3/`
 - `train_task4.py` - Train models on data from `datasets/4/`
+- `train_task1_mamba_ablation_parallel.sh` - Run Task 1 Mamba ablation jobs in parallel
+- `train_task2_mamba_ablation_parallel.sh` - Run Task 2 Mamba ablation jobs in parallel
+- `train_task3_mamba_ablation_parallel.sh` - Run Task 3 Mamba ablation jobs in parallel
+- `train_task4_mamba_ablation_parallel.sh` - Run Task 4 Mamba ablation jobs in parallel
 
 ## Usage
 
@@ -71,6 +75,16 @@ python script/train_task1.py --model cnn_transformer \
     --cnn_transformer_d_model 512 \
     --cnn_transformer_nhead 16 \
     --cnn_transformer_num_layers 4
+```
+
+Run Mamba ablations for Task 1:
+```bash
+bash script/train_task1_mamba_ablation_parallel.sh
+```
+
+Run Mamba ablations for Task 4 on multiple GPUs:
+```bash
+N_RUNS=5 DEVICE_LIST="cuda:0,cuda:1,cuda:2,cuda:3" bash script/train_task4_mamba_ablation_parallel.sh
 ```
 
 ## Model Save Locations

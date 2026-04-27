@@ -1,9 +1,5 @@
 #!/bin/bash
-# Run the original Mamba model plus Mamba pooling ablations in parallel.
-#
-# Usage:
-#   bash script/train_mamba_ablation_parallel.sh 1
-#   TASK_ID=4 N_RUNS=5 DEVICE_LIST="cuda:0,cuda:1,cuda:2,cuda:3" bash script/train_mamba_ablation_parallel.sh
+# Run the original Mamba model plus Mamba pooling ablations in parallel for Task 1.
 
 set -euo pipefail
 
@@ -11,56 +7,32 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR/.."
 
 if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
-  echo "Usage: bash script/train_mamba_ablation_parallel.sh [task_id]"
+  echo "Usage: bash script/train_task1_mamba_ablation_parallel.sh"
   echo ""
-  echo "Runs 4 jobs in parallel for the selected task:"
+  echo "Runs 4 jobs in parallel for Task 1:"
   echo "  1. Original mamba model"
   echo "  2. mamba_mean"
   echo "  3. mamba_max"
   echo "  4. mamba_meanmax"
   echo ""
   echo "Environment variables:"
-  echo "  TASK_ID         Task id when not passed as positional arg (default: 1)"
   echo "  N_RUNS          Number of runs per model (default: 10)"
-  echo "  EPOCHS          Training epochs (task defaults match existing scripts)"
+  echo "  EPOCHS          Training epochs (default: 100)"
   echo "  BATCH_SIZE      Batch size (default: 32)"
-  echo "  LEARNING_RATE   Learning rate (task defaults match existing scripts)"
-  echo "  VALIDATION_SPLIT Validation split (task defaults match existing scripts)"
+  echo "  LEARNING_RATE   Learning rate (default: 0.001)"
+  echo "  VALIDATION_SPLIT Validation split (default: 0.2)"
   echo "  DEVICE          Fallback device for all jobs when DEVICE_LIST is unset"
   echo "  DEVICE_LIST     Comma or space separated device list for the 4 jobs"
   echo "                  Order: mamba,mamba_mean,mamba_max,mamba_meanmax"
   echo "  PYTHON_BIN      Python executable to use (default: .venv/bin/python)"
   echo "  DRY_RUN=1       Only print commands; do not launch any jobs"
-  echo ""
-  echo "Behavior:"
-  echo "  Jobs are dispatched in parallel in the background."
-  echo "  This launcher exits immediately after all jobs are started."
   exit 0
 fi
 
-TASK_ID="${1:-${TASK_ID:-1}}"
-case "$TASK_ID" in
-  1|2|3|4)
-    ;;
-  *)
-    echo "Invalid TASK_ID: $TASK_ID. Expected one of 1, 2, 3, 4." >&2
-    exit 1
-    ;;
-esac
-
-case "$TASK_ID" in
-  4)
-    EPOCHS=${EPOCHS:-200}
-    LEARNING_RATE=${LEARNING_RATE:-0.0005}
-    VALIDATION_SPLIT=${VALIDATION_SPLIT:-0.25}
-    ;;
-  *)
-    EPOCHS=${EPOCHS:-100}
-    LEARNING_RATE=${LEARNING_RATE:-0.001}
-    VALIDATION_SPLIT=${VALIDATION_SPLIT:-0.2}
-    ;;
-esac
-
+TASK_ID=1
+EPOCHS=${EPOCHS:-100}
+LEARNING_RATE=${LEARNING_RATE:-0.001}
+VALIDATION_SPLIT=${VALIDATION_SPLIT:-0.2}
 BATCH_SIZE=${BATCH_SIZE:-32}
 N_RUNS=${N_RUNS:-10}
 DEVICE=${DEVICE:-}
@@ -83,20 +55,14 @@ fi
 export PATH="$(dirname "$PYTHON_BIN"):$PATH"
 
 mkdir -p results/log
-WRAPPER_LOG="results/log/$(basename "$0" .sh)_task${TASK_ID}_${TIMESTAMP}.log"
+WRAPPER_LOG="results/log/$(basename "$0" .sh)_${TIMESTAMP}.log"
 exec > >(tee -a "$WRAPPER_LOG") 2>&1
 
 echo "[Wrapper log] $WRAPPER_LOG"
 echo "[Python] $PYTHON_BIN"
 
-TRAIN_SCRIPT="script/train_task${TASK_ID}.py"
-SELECTED_SCRIPT="script/train_task${TASK_ID}_selected_models.sh"
-SUMMARY_FILE="results/mamba_ablation_parallel_task${TASK_ID}_${TIMESTAMP}.txt"
-
-MAMBA_D_MODEL=${MAMBA_D_MODEL:-256}
-MAMBA_N_LAYERS=${MAMBA_N_LAYERS:-4}
-MAMBA_D_STATE=${MAMBA_D_STATE:-64}
-MAMBA_DROPOUT=${MAMBA_DROPOUT:-0.1}
+SELECTED_SCRIPT="script/train_task1_selected_models.sh"
+SUMMARY_FILE="results/task1_mamba_ablation_parallel_${TIMESTAMP}.txt"
 
 DEVICE_LIST_NORMALIZED="${DEVICE_LIST:-}"
 DEVICE_LIST_NORMALIZED="${DEVICE_LIST_NORMALIZED//,/ }"
@@ -108,14 +74,6 @@ done
 declare -a JOB_LABELS=()
 declare -a JOB_PIDS=()
 declare -a JOB_LOGS=()
-
-build_device_args() {
-  local device_value="$1"
-  DEVICE_ARGS=()
-  if [ -n "$device_value" ]; then
-    DEVICE_ARGS=(--device "$device_value")
-  fi
-}
 
 print_command() {
   printf '  '
@@ -146,10 +104,32 @@ start_job() {
   JOB_PIDS+=("$!")
 }
 
-build_device_args "${JOB_DEVICES[0]}"
+start_ablation_job() {
+  local label="$1"
+  local model_name="$2"
+  local device_value="$3"
+  local job_log="$4"
+  local -a command=(
+    "$PYTHON_BIN" script/ablation_test.py
+    --epochs "$EPOCHS"
+    --batch_size "$BATCH_SIZE"
+    --learning_rate "$LEARNING_RATE"
+    --validation_split "$VALIDATION_SPLIT"
+    --n_runs "$N_RUNS"
+    --task_id "$TASK_ID"
+  )
+
+  if [ -n "$device_value" ]; then
+    command+=(--cuda "$device_value")
+  fi
+
+  command+=("$model_name")
+  start_job "$label" "$job_log" "${command[@]}"
+}
+
 start_job \
   "mamba" \
-  "results/log/mamba_task${TASK_ID}_${TIMESTAMP}.log" \
+  "results/log/mamba_task1_${TIMESTAMP}.log" \
   env \
   TIMESTAMP="${TIMESTAMP}_mamba" \
   EPOCHS="$EPOCHS" \
@@ -160,47 +140,23 @@ start_job \
   DEVICE="${JOB_DEVICES[0]}" \
   bash "$SELECTED_SCRIPT" mamba
 
-build_device_args "${JOB_DEVICES[1]}"
-start_job \
+start_ablation_job \
   "mamba_mean" \
-  "results/log/mamba_mean_task${TASK_ID}_${TIMESTAMP}.log" \
-  "$PYTHON_BIN" script/ablation_test.py \
-  --epochs "$EPOCHS" \
-  --batch_size "$BATCH_SIZE" \
-  --learning_rate "$LEARNING_RATE" \
-  --validation_split "$VALIDATION_SPLIT" \
-  --n_runs "$N_RUNS" \
-  --task_id "$TASK_ID" \
-  "${DEVICE_ARGS[@]}" \
-  mamba_mean
+  "mamba_mean" \
+  "${JOB_DEVICES[1]}" \
+  "results/log/mamba_mean_task1_${TIMESTAMP}.log"
 
-build_device_args "${JOB_DEVICES[2]}"
-start_job \
+start_ablation_job \
   "mamba_max" \
-  "results/log/mamba_max_task${TASK_ID}_${TIMESTAMP}.log" \
-  "$PYTHON_BIN" script/ablation_test.py \
-  --epochs "$EPOCHS" \
-  --batch_size "$BATCH_SIZE" \
-  --learning_rate "$LEARNING_RATE" \
-  --validation_split "$VALIDATION_SPLIT" \
-  --n_runs "$N_RUNS" \
-  --task_id "$TASK_ID" \
-  "${DEVICE_ARGS[@]}" \
-  mamba_max
+  "mamba_max" \
+  "${JOB_DEVICES[2]}" \
+  "results/log/mamba_max_task1_${TIMESTAMP}.log"
 
-build_device_args "${JOB_DEVICES[3]}"
-start_job \
+start_ablation_job \
   "mamba_meanmax" \
-  "results/log/mamba_meanmax_task${TASK_ID}_${TIMESTAMP}.log" \
-  "$PYTHON_BIN" script/ablation_test.py \
-  --epochs "$EPOCHS" \
-  --batch_size "$BATCH_SIZE" \
-  --learning_rate "$LEARNING_RATE" \
-  --validation_split "$VALIDATION_SPLIT" \
-  --n_runs "$N_RUNS" \
-  --task_id "$TASK_ID" \
-  "${DEVICE_ARGS[@]}" \
-  mamba_meanmax
+  "mamba_meanmax" \
+  "${JOB_DEVICES[3]}" \
+  "results/log/mamba_meanmax_task1_${TIMESTAMP}.log"
 
 if [ "$DRY_RUN" = "1" ]; then
   echo "[Dry run] Commands printed only. Remove DRY_RUN=1 to launch all 4 jobs in parallel."
@@ -208,7 +164,7 @@ if [ "$DRY_RUN" = "1" ]; then
 fi
 
 {
-  echo "Task ${TASK_ID} - Parallel Mamba Ablation Launcher"
+  echo "Task 1 - Parallel Mamba Ablation Launcher"
   echo "Generated: $(date)"
   echo "Wrapper log: $WRAPPER_LOG"
   echo "Python: $PYTHON_BIN"
